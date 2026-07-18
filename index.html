@@ -98,7 +98,7 @@
             <div class="nav-bar">
                 <button id="tab-profile" class="active" onclick="showTab('profile')">Saguão</button>
                 <button id="tab-tickets" onclick="showTab('tickets')">Suporte / Ajuda</button>
-                <button id="tab-sorteios" onclick="window.open('https://flapcaps.github.io/Flap-Caps/Sorteio', '_blank')" style="background: #00bcd4; color: black; border-color: #fff;">Sorteios VIP</button>
+                <button id="tab-sorteios" onclick="window.open('https://flapcaps.github.io/Flap-Caps/Sorteio/', '_blank')" style="background: #00bcd4; color: black; border-color: #fff;">Sorteios VIP</button>
                 <button id="tab-admin" class="hidden" onclick="showTab('admin')" style="background: #1b5e20; border-color: var(--vegas-gold);">Admin</button>
             </div>
 
@@ -420,7 +420,7 @@
 
         async function sendTicketMessage() {
             if(!currentTicketId) return;
-            if(activeMessageCount >= 10) return alert("Limite de 10 mensagens atingido neste ticket!");
+            if(activeMessageCount >= 40) return alert("Limite de 40 mensagens atingido neste ticket!");
             
             const input = document.getElementById('ticket-input');
             const text = input.value.trim();
