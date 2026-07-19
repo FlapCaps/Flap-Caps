@@ -2,220 +2,353 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flat Caps - Cassino & Suporte</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteio Automático</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        /* TEMA LAS VEGAS */
         :root {
-            --vegas-gold: #ffd700;
-            --vegas-red: #d32f2f;
-            --vegas-bg: #0b0c10;
-            --vegas-panel: rgba(15, 15, 20, 0.9);
-        }
-        
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--vegas-bg);
-            background-image: radial-gradient(circle at center, #2a0800 0%, var(--vegas-bg) 100%), 
-                              url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='40' font-size='20' opacity='0.05'%3E🎰%3C/text%3E%3Ctext x='55' y='70' font-size='20' opacity='0.05'%3E🃏%3C/text%3E%3Ctext x='35' y='20' font-size='20' opacity='0.05'%3E🎲%3C/text%3E%3C/svg%3E");
-            color: white;
-            min-height: 100vh;
-            overscroll-behavior-y: contain;
+            --primary: #6c5ce7;
+            --primary-glow: rgba(108, 92, 231, 0.6);
+            --bg-gradient-1: #0f2027;
+            --bg-gradient-2: #203a43;
+            --bg-gradient-3: #2c5364;
+            --text: #d2dae2;
+            --box-bg: rgba(45, 52, 54, 0.9);
+            --success: #00b894;
+            --danger: #d63031;
+            --highlight: #00d2d3;
+            --gold: #f1c40f;
         }
 
-        body.login-lock { overflow: hidden; height: 100vh; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            /* Fundo Animado e Vibrante */
+            background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3));
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        header {
+            width: 100%;
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        @media (max-width: 600px) {
+            header { flex-direction: column; text-align: center; }
+            .container { margin-top: 20px; padding: 1.5rem; }
+            .timer { font-size: 2.5rem; } /* Ajustado levemente para mobile */
+            .number-box { font-size: 3.5rem; min-height: 80px; }
+            #adminPanel input, #adminPanel button, #adminPanel select { width: 100%; }
+        }
+
+        button {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-weight: bold; transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        button:hover { 
+            background: #5b4bc4; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px var(--primary-glow);
+        }
+        button:disabled { background: #555; cursor: not-allowed; transform: none; box-shadow: none; }
 
         .container {
-            width: 100%; max-width: 100vw; margin: 0 auto; padding: 10px; box-sizing: border-box;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh;
-        }
-        #app-screen { width: 100%; max-width: 800px; }
-        
-        .nav-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 20px; }
-        .nav-bar button { flex: 1 1 30%; font-size: 14px; padding: 12px 5px; background: #222; color: white; border: 1px solid #444; border-radius: 5px; }
-        .nav-bar button.active { background: var(--vegas-gold); color: black; font-weight: bold; border-color: var(--vegas-gold); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
-        
-        input, button, textarea, select { font-size: 16px; width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; box-sizing: border-box; }
-        input, textarea, select { background: rgba(255,255,255,0.9); color: black; }
-        
-        button { background: var(--vegas-gold); color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        button:hover { background: #e6b800; transform: scale(1.02); }
-        
-        .btn-small { width: auto; padding: 8px 15px; font-size: 13px; }
-        .btn-danger { background: var(--vegas-red); color: white; }
-        .btn-danger:hover { background: #b71c1c; }
-
-        .hidden { display: none !important; }
-
-        .card {
-            background: var(--vegas-panel); padding: 20px; border-radius: 12px; border: 2px solid var(--vegas-gold);
-            margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            background: var(--box-bg); padding: 2rem; border-radius: 15px;
+            text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1);
+            max-width: 600px; width: 90%; margin-top: 20px; position: relative;
         }
 
-        h1, h2, h3 { text-align: center; margin-top: 0; text-transform: uppercase; font-style: italic; color: var(--vegas-gold); text-shadow: 2px 2px 4px #000;}
+        h1, h2, h3 { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-        /* Chat & Tickets */
-        .chat-box { height: 350px; overflow-y: auto; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;}
-        .msg { margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; }
-        .msg.admin { border-left: 5px solid var(--vegas-gold); background: rgba(255, 215, 0, 0.15); }
-        .msg.system { text-align: center; font-style: italic; color: #aaa; background: transparent; border: none; }
-        .msg-header { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; margin-bottom: 5px; }
-        
-        /* Message Counter Limit Indicator */
-        .msg-limit-alert { text-align: center; font-size: 12px; color: var(--vegas-gold); margin-top: -5px; margin-bottom: 10px;}
+        input, select {
+            padding: 10px; border-radius: 8px; border: 1px solid #555;
+            background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        input:focus, select:focus { border-color: var(--highlight); outline: none; box-shadow: 0 0 10px rgba(0, 210, 211, 0.3); }
 
-        /* Painel Admin */
-        .admin-panel { border: 1px solid var(--vegas-gold); padding: 15px; border-radius: 8px; margin-bottom: 20px; background: rgba(255, 215, 0, 0.05); }
-        .admin-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--vegas-gold); padding-bottom: 10px; }
-        .admin-nav button { flex: 1 1 45%; background: #333; color: white; border: 1px solid #555; padding: 10px; }
-        .admin-nav button.active { background: var(--vegas-gold); color: black; font-weight: bold; }
-        .admin-section { display: none; }
-        .admin-section.active { display: block; }
-        .flex-row { display: flex; gap: 10px; align-items: center; }
+        /* Lista de Sorteios - Ligeira e sem lag */
+        #listaSorteios {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; width: 90%; max-width: 900px; margin-top: 20px; margin-bottom: 40px;
+        }
+
+        .sorteio-card {
+            background: linear-gradient(145deg, rgba(45, 52, 54, 0.9), rgba(30, 39, 46, 0.9));
+            padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.2s ease-in-out;
+            border-top: 4px solid var(--primary); display: flex; flex-direction: column; gap: 12px;
+            position: relative; overflow: hidden;
+        }
+
+        .sorteio-card:hover { 
+            transform: translateY(-3px); /* Animação reduzida para não causar lag */
+            box-shadow: 0 8px 20px var(--primary-glow);
+            border-top-color: var(--highlight);
+        }
         
-        .neon-title { font-size: 2.5em; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--vegas-gold), 0 0 40px var(--vegas-gold); }
+        .sorteio-card.encerrado { border-top-color: var(--danger); opacity: 0.6; filter: grayscale(50%); }
+        .sorteio-card h3 { font-size: 1.4rem; color: var(--highlight); margin-bottom: 5px; }
+        
+        /* Badges e Preços */
+        .card-header-flex { display: flex; justify-content: space-between; align-items: center; }
+        
+        @keyframes pulseBadge {
+            0% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+        }
+
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
+        .badge.ativo { background: var(--success); color: #fff; animation: pulseBadge 2s infinite; }
+        .badge.encerrado { background: var(--danger); color: #fff; }
+
+        .preco-tag {
+            background: var(--gold); color: #000; font-weight: 900;
+            padding: 5px 12px; border-radius: 20px; font-size: 1rem;
+            display: inline-flex; align-items: center; gap: 5px;
+            box-shadow: 0 4px 10px rgba(241, 196, 15, 0.4);
+        }
+
+        /* Sorteio Individual */
+        #viewSorteio { display: none; width: 100%; align-items: center; flex-direction: column; }
+        .btn-voltar { background: transparent; border: 1px solid #555; margin-bottom: 15px; align-self: flex-start; color: #fff;}
+        .btn-voltar:hover { background: rgba(255,255,255,0.1); box-shadow: none; transform: translateX(-5px); }
+        
+        #areaCompra {
+            margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.4);
+            border-radius: 15px; display: flex; flex-direction: column; gap: 15px; width: 100%;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Grid de Compra em Tempo Real */
+        .grid-numeros {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            width: 100%;
+        }
+
+        .btn-numero {
+            background: linear-gradient(145deg, #111, #222); border: 2px solid #444; border-radius: 12px;
+            padding: 15px 10px; display: flex; flex-direction: column; gap: 5px;
+            cursor: pointer; transition: all 0.2s; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-numero:hover { 
+            border-color: var(--highlight); 
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a); 
+            transform: scale(1.03); /* Suavizado */
+            box-shadow: 0 8px 20px rgba(0, 210, 211, 0.3);
+        }
+        .btn-numero .num-title { font-size: 2rem; font-weight: 900; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
+        .btn-numero .num-stats { font-size: 0.85rem; color: #aaa; background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 10px;}
+        .btn-numero .num-prize { font-size: 1.1rem; font-weight: bold; color: var(--gold); margin-top: 5px; }
+
+        #adminPanel {
+            display: none; flex-direction: column; gap: 15px; margin-top: 20px;
+            padding-top: 20px; border-top: 1px solid #555; background: rgba(0,0,0,0.3);
+        }
+
+        /* Textos e Animações */
+        .status-text { font-size: 1.2rem; margin-bottom: 10px; color: var(--highlight); font-weight: bold; text-transform: uppercase; letter-spacing: 2px;}
+        
+        /* Ajuste crucial para TOC (Relógio perfeito) */
+        .timer { 
+            font-size: 3.0rem; /* Tamanho diminuído para não sair da caixinha */
+            font-weight: 900; 
+            color: #fff; 
+            text-shadow: 0 0 15px rgba(255,255,255,0.5); 
+            letter-spacing: 0px; /* Zerado para corrigir a descentralização (o letter-spacing empurrava o texto levemente para a direita) */
+            font-variant-numeric: tabular-nums; /* Força os números a terem a mesma largura exata (O 1 fica da largura do 8) */
+            font-feature-settings: "tnum"; 
+            display: inline-block;
+            margin-right: 5px; /* Empurra um pouquinhoinho pra esquerda como você pediu */
+        }
+
+        .number-box {
+            font-size: 6rem; font-weight: 900; color: #fff;
+            text-shadow: 0 0 30px var(--primary), 0 0 60px var(--primary); min-height: 120px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        @keyframes roleta { 0% { transform: translateY(-30px); opacity: 0; } 50% { transform: translateY(0px); opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
+        @keyframes popVencedor { 0% { transform: scale(0.2) rotate(-10deg); opacity: 0; } 70% { transform: scale(1.2) rotate(5deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; text-shadow: 0 0 40px #f1c40f, 0 0 80px #f1c40f; color: #f1c40f; } }
+
+        .animando { animation: roleta 0.08s infinite linear; color: #ff9f43; text-shadow: none; }
+        .vencedor { animation: popVencedor 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Login & Popups */
+        #loginScreen {
+            display: flex; flex-direction: column; gap: 15px; background: rgba(0,0,0,0.7);
+            padding: 3rem; border-radius: 20px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            max-width: 400px; width: 90%; margin: auto; margin-top: 15vh; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #appScreen { display: none; width: 100%; align-items: center; flex-direction: column; }
+
+        #winnerPopup {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, var(--gold), #f39c12); color: #111; padding: 40px; border-radius: 20px;
+            font-size: 1.5rem; font-weight: bold; text-align: center; z-index: 1000;
+            box-shadow: 0 0 50px rgba(241, 196, 15, 0.6); animation: popVencedor 0.6s ease-out forwards;
+            border: 4px solid #fff;
+        }
+
+        /* Chat */
+        #btnAbrirChat {
+            position: fixed; bottom: 20px; right: 20px; width: 65px; height: 65px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #a29bfe); color: white; font-size: 28px; border: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5); cursor: pointer; display: none; z-index: 99;
+            align-items: center; justify-content: center; transition: all 0.3s;
+        }
+        #btnAbrirChat:hover { transform: scale(1.1) rotate(10deg); box-shadow: 0 8px 25px var(--primary-glow); }
+        
+        #chatContainer {
+            position: fixed; bottom: 95px; right: 20px; width: 320px; background: rgba(30, 39, 46, 0.95);
+            border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); display: none;
+            flex-direction: column; overflow: hidden; z-index: 100; backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        @media (max-width: 600px) { #chatContainer { width: 90%; right: 5%; bottom: 95px; } }
+        #chatMessages { height: 250px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem; }
+        #chatMessages div { background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 10px; word-wrap: break-word; border-left: 3px solid var(--primary); }
+        #chatInputContainer { display: flex; padding: 10px; background: rgba(0,0,0,0.6); border-top: 1px solid rgba(255,255,255,0.05); }
+        #chatInputContainer input { flex: 1; padding: 8px; margin-right: 8px; border-radius: 20px; border: none; background: rgba(255,255,255,0.1); color: white; }
     </style>
 </head>
-<body class="login-lock">
-    <div class="container">
-        <div id="auth-screen" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: auto; max-width: 400px; width: 100%; box-sizing: border-box;">
-            <h1 class="neon-title">🎰 Flat Caps 🎰</h1>
-            <div id="login-form" style="width: 100%;">
-                <h2>🚪 Entrada</h2>
-                <input type="text" id="login-user" placeholder="👤 Seu Nome">
-                <input type="password" id="login-pass" placeholder="🔑 Senha">
-                <button onclick="login()">Entrar 🚀</button>
+<body>
+
+    <div id="loginScreen">
+        <h2 style="color: var(--highlight); margin-bottom: 10px; font-size: 2rem;">SorteioLive</h2>
+        <p style="color: #aaa; margin-bottom: 20px; font-size: 0.9rem;">Entre para testar sua sorte!</p>
+        <input type="text" id="loginUser" placeholder="Nome de Usuário (Ex: Carlos)">
+        <input type="password" id="loginPass" placeholder="Senha">
+        <button onclick="fazerLogin()" style="padding: 12px; font-size: 1.1rem; margin-top: 10px;">Entrar no Jogo</button>
+    </div>
+
+    <div id="appScreen">
+        <header>
+            <h2 style="font-size: 1.8rem; letter-spacing: 1px;">🎮 Sorteio<span style="color: var(--highlight);">Live</span></h2>
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center;">
+                <button onclick="window.location.href='https://flapcaps.github.io/Flap-Caps/'" style="background: transparent; border: 1px solid #3498db; color: #3498db;">Voltar</button>
+                <span id="userBalance" style="font-weight: 900; color: var(--gold); background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--gold);">Saldo: 0 FC$</span>
+                <button id="btnAdmin" style="display:none;" onclick="mostrarAdmin()">Painel Adm</button>
+                <button onclick="fazerLogoff()" style="background: transparent; border: 1px solid #e74c3c; color: #e74c3c;">Sair</button>
+            </div>
+        </header>
+
+        <!-- TELA 1: LISTA DE SORTEIOS -->
+        <div id="viewListaSorteios" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <div class="container" id="adminPanel" style="width: 90%; max-width: 800px;">
+                <h3 style="color: var(--highlight);">Agendar Novo Sorteio</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                    <input type="text" id="codigoSorteio" placeholder="Nome (Ex: Sorteio Ouro)" style="flex:1;">
+                    <input type="datetime-local" id="dataHora">
+                    <select id="numMax" style="width: 150px;">
+                        <option value="2">2 Números (1-2)</option>
+                        <option value="3">3 Números (1-3)</option>
+                        <option value="4">4 Números (1-4)</option>
+                    </select>
+                    <button onclick="agendarSorteio()">Criar</button>
+                </div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+                <h3 style="color: var(--highlight);">Configuração de Valor Padrão</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; justify-content: center;">
+                    <input type="number" id="confCustoGeral" placeholder="Custo Único (Ex: 2)" value="2" style="width: 150px;">
+                    <button onclick="configurarValorGeral()" style="background: var(--success);">Salvar Padrão</button>
+                </div>
+                
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+                <button onclick="apagarSorteiosEncerrados()" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%;">Limpar Sorteios Antigos do Banco</button>
+            </div>
+
+            <h2 style="margin-top: 40px; font-size: 2.2rem;">Escolha uma Sala</h2>
+            <p style="color: #aaa; margin-bottom: 20px;">Valores e prêmios variam de acordo com o sorteio!</p>
+            
+            <div id="listaSorteios">
+                <!-- Sorteios serão injetados aqui -->
             </div>
         </div>
 
-        <div id="app-screen" class="hidden">
-            <div class="nav-bar">
-                <button id="tab-profile" class="active" onclick="showTab('profile')">Saguão</button>
-                <button id="tab-tickets" onclick="showTab('tickets')">Suporte / Ajuda</button>
-                <button id="tab-sorteios" onclick="window.open('https://flapcaps.github.io/Flap-Caps/Sorteio/', '_blank')" style="background: #00bcd4; color: black; border-color: #fff;">Sorteios VIP</button>
-                <button id="tab-admin" class="hidden" onclick="showTab('admin')" style="background: #1b5e20; border-color: var(--vegas-gold);">Admin</button>
-            </div>
-
-            <!-- PERFIL -->
-            <div id="sec-profile" class="card">
-                <h2>Seu Perfil</h2>
-                <p><strong>Jogador:</strong> <span id="lbl-user"></span></p>
-                <h3 style="color: var(--vegas-gold); font-size: 32px; text-shadow: 0 0 10px rgba(255,215,0,0.5);">Saldo: <span id="lbl-balance">0.00</span> FC$</h3>
-                <div style="margin-top: 30px; border-top: 1px solid #555; padding-top: 20px;">
-                    <h4>Resgatar Fichas (Código)</h4>
-                    <input type="text" id="promo-code" placeholder="Insira o código aqui">
-                    <button onclick="redeemCode()">Resgatar</button>
-                </div>
-                <div style="margin-top: 30px; border-top: 1px solid var(--vegas-red); padding-top: 20px; text-align: center;">
-                    <button class="btn-danger" onclick="logout()" style="max-width: 200px;">🚪 Sair da Conta</button>
-                </div>
-            </div>
-
-            <!-- TICKETS (SUPORTE/COMPRA) -->
-            <div id="sec-tickets" class="card hidden">
-                <h2>🎫 Central de Ajuda & Compras</h2>
+        <!-- TELA 2: SORTEIO INDIVIDUAL -->
+        <div id="viewSorteio">
+            <div class="container">
+                <button class="btn-voltar" onclick="voltarParaLista()">← Voltar para as Salas</button>
                 
-                <!-- Criar Novo Ticket -->
-                <div id="ticket-creation-panel">
-                    <p style="text-align: center;">Precisa de algo? Abra um ticket privado com a nossa equipe.</p>
-                    <select id="new-ticket-type">
-                        <option value="Compra de FC$">💰 Quero comprar FC$</option>
-                        <option value="Dúvida Geral">❓ Tenho uma dúvida</option>
-                        <option value="Relatar Problema">⚠️ Relatar um erro ou problema</option>
-                    </select>
-                    <button onclick="userCreateTicket()" style="margin-top: 15px; font-size: 18px; padding: 15px;">Abrir Chamado</button>
-                </div>
-
-                <!-- Painel de Feedback (Aparece ao encerrar o chat) -->
-                <div id="feedback-panel" class="hidden">
-                    <div style="text-align:center; padding: 15px; background: rgba(255,215,0,0.1); border: 1px solid var(--vegas-gold); border-radius: 8px;">
-                        <h3 style="color: var(--vegas-gold);">Seu ticket foi encerrado!</h3>
-                        <p style="font-size: 14px;">O administrador salvou o registro e fechou seu chamado. Avalie seu atendimento:</p>
-                        <select id="feedback-rating" style="margin-bottom: 10px;">
-                            <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
-                            <option value="4">⭐⭐⭐⭐ Muito Bom</option>
-                            <option value="3">⭐⭐⭐ Bom</option>
-                            <option value="2">⭐⭐ Ruim</option>
-                            <option value="1">⭐ Péssimo</option>
-                        </select>
-                        <textarea id="feedback-text" placeholder="Deixe um comentário sobre o suporte (opcional)..." rows="3"></textarea>
-                        <button onclick="sendFeedback()" style="margin-top: 15px;">Enviar Avaliação e Voltar</button>
-                    </div>
-                </div>
-
-                <!-- Chat do Ticket Ativo -->
-                <div id="ticket-chat-panel" class="hidden">
-                    <div id="ticket-status-header" style="text-align:center; margin-bottom:15px; font-weight:bold; font-size: 16px; color: var(--vegas-gold); background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;"></div>
-                    <div class="msg-limit-alert" id="user-msg-limit">Mensagens: 0/40 permitidas</div>
-                    <div class="chat-box" id="ticket-messages"></div>
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="ticket-input" placeholder="Digite sua mensagem..." onkeypress="if(event.key === 'Enter') sendTicketMessage()">
-                        <button onclick="sendTicketMessage()" style="width: 100px;">Enviar</button>
-                    </div>
-                    <!-- Botão de encerrar do usuário removido para evitar que ele exclua sem salvar. O Admin faz a gestão -->
-                </div>
-            </div>
-
-            <!-- ADMIN -->
-            <div id="sec-admin" class="card hidden">
-                <h2>Administração</h2>
+                <h1 id="tituloSorteioInd" style="font-size: 2.5rem; color: var(--highlight);">Carregando...</h1>
+                <p id="infoCustoSorteio" style="color: var(--gold); font-weight: bold; font-size: 1.2rem; margin-bottom: 25px; background: rgba(241, 196, 15, 0.1); padding: 5px 15px; border-radius: 20px; display: inline-block;">Carregando custo...</p>
                 
-                <div class="admin-nav">
-                    <button id="btn-adm-banco" class="active" onclick="showAdminTab('banco')">💸 Transferir Grana</button>
-                    <button id="btn-adm-tickets" onclick="showAdminTab('tickets')">🎫 Atender Tickets</button>
+                <div id="drawDisplay" style="background: rgba(0,0,0,0.5); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
+                    <div class="status-text" id="statusText">Aguardando agendamento...</div>
+                    <div id="mainContent" class="timer">--:--:--</div>
                 </div>
 
-                <!-- ADMIN: GRANA -->
-                <div id="admin-tab-banco" class="admin-section active">
-                    <div class="admin-panel">
-                        <h3>💸 Adicionar / Remover FC$</h3>
-                        <select id="admin-user-select"><option>Carregando jogadores...</option></select>
-                        <div class="flex-row">
-                            <input type="number" id="admin-money-amount" placeholder="Valor (Ex: 50)">
-                            <button onclick="adminTransferMoney(true)" style="background: #2e7d32; color: white;">Dar</button>
-                            <button onclick="adminTransferMoney(false)" class="btn-danger">Tirar</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ADMIN: TICKETS -->
-                <div id="admin-tab-tickets" class="admin-section">
-                    <div class="admin-panel">
-                        <h3>🎫 Fila de Atendimento</h3>
-                        <button onclick="adminLoadTickets()" class="btn-small" style="margin-bottom: 10px;">🔄 Atualizar Lista</button>
-                        <div id="admin-tickets-list"></div>
-                    </div>
-                    
-                    <!-- Área onde o Admin responde um ticket específico -->
-                    <div id="admin-active-ticket-panel" class="hidden admin-panel" style="border-color: #00bcd4; background: rgba(0, 188, 212, 0.1);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                            <h3 id="admin-ticket-title" style="color: #00bcd4; margin: 0;">Atendendo...</h3>
-                            <button class="btn-small btn-danger" onclick="adminCloseTicketView()">Sair do Chat</button>
-                        </div>
-                        <div class="msg-limit-alert" id="admin-msg-limit" style="color:#00bcd4;">Mensagens: 0/40 permitidas</div>
-                        <div class="chat-box" id="admin-ticket-messages" style="height: 250px;"></div>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="admin-ticket-input" placeholder="Sua resposta..." onkeypress="if(event.key === 'Enter') adminSendTicketMessage()">
-                            <button onclick="adminSendTicketMessage()" style="width: 100px; background: #00bcd4; color: black;">Enviar</button>
-                        </div>
-                        <button class="btn-danger" onclick="adminForceCloseTicket()" style="margin-top:15px; width:100%;">
-                            Baixar TXT e Apagar Ticket Permanentemente
-                        </button>
+                <div id="areaCompra">
+                    <h3 style="color: var(--primary); font-size: 1.5rem;">Faça sua Aposta</h3>
+                    <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 15px;">Os prêmios se multiplicam de acordo com as escolhas da galera!</p>
+                    <div id="opcoesNumeros" class="grid-numeros">
+                        <!-- Botões de números injetados via JS -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Popup Vencedor -->
+    <div id="winnerPopup">
+        <h2 style="font-size: 2.5rem; margin-bottom: 10px;">🎉 GANHOU! 🎉</h2>
+        <p id="winnerPrizeText" style="font-size: 1.8rem;">Prêmio: 0 FC$</p>
+        <button onclick="fecharPopup()" style="margin-top: 25px; background: #111; padding: 10px 30px; font-size: 1.2rem; border-radius: 30px;">Coletar</button>
+    </div>
+
+    <!-- Chat -->
+    <button id="btnAbrirChat" onclick="toggleChat()">💬</button>
+    <div id="chatContainer">
+        <div style="background: rgba(0,0,0,0.8); padding: 10px 15px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; color: var(--highlight);">
+            <span>Chat da Galera</span>
+            <button onclick="toggleChat()" style="background: transparent; color: #ff6b81; padding: 0; font-size: 18px; box-shadow: none;">✖</button>
+        </div>
+        <div id="chatMessages"></div>
+        <div id="chatInputContainer">
+            <input type="text" id="chatMsg" placeholder="Fale algo..." onkeypress="if(event.key === 'Enter') enviarMensagemChat()">
+            <button onclick="enviarMensagemChat()" style="border-radius: 20px; padding: 8px 15px;">Enviar</button>
+        </div>
+    </div>
+
     <script>
-        // === CONFIGURAÇÃO DO FIREBASE ===
+        // 1. Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDxnSJSTHuEnmzMZj-z-1YiTEo8cLLGbKk",
             authDomain: "star-super-v2.firebaseapp.com",
@@ -225,487 +358,503 @@
             appId: "1:279120272242:web:c93061cbc8ca26c21b5beb",
             measurementId: "G-032NH18WM3"
         };
+
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let currentUserData = null;
-        let activeMessageCount = 0; 
+        // 2. Variáveis Globais
+        let usuarioLogado = null;
+        let sorteioSelecionadoId = null;
+        let sorteioAtualData = null;
+        let intervaloTimer = null;
+        let statusSorteio = 'AGUARDANDO';
+        let listenerSorteioIndividual = null;
+        let listenerCompradoresRealTime = null;
         
-        let currentTicketId = null;
-        let ticketStatusUnsubscribe = null;
-        let ticketMessagesUnsubscribe = null;
-        
-        let adminActiveTicketId = null;
-        let adminTicketMessagesUnsubscribe = null;
+        let custoGeralAtual = 2; // Default Global
+        let custoAtualSorteio = 2; // Custo Dinâmico por Sorteio
 
+        // Auto-Login
         window.onload = function() {
-            const savedUser = localStorage.getItem('flatCapsUser');
-            const savedPass = localStorage.getItem('flatCapsPass');
-            if (savedUser && savedPass) {
-                document.getElementById('login-user').value = savedUser;
-                document.getElementById('login-pass').value = savedPass;
-                login();
+            const userSalvo = localStorage.getItem('autoLoginUser');
+            const passSalvo = localStorage.getItem('autoLoginPass');
+            if (userSalvo && passSalvo) {
+                document.getElementById('loginUser').value = userSalvo;
+                document.getElementById('loginPass').value = passSalvo;
+                fazerLogin();
             }
         };
 
-        async function login() {
-            const user = document.getElementById('login-user').value.trim();
-            const pass = document.getElementById('login-pass').value.trim();
-            
-            if(!user || !pass) return alert("Digite um nome e uma senha!");
-            if(user.length < 3 || user.length > 15) return alert("O nome deve ter entre 3 e 15 letras.");
+        // 3. Autenticação e Interface
+        function fazerLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
 
-            try {
-                const userRef = db.collection('users').doc(user);
-                const doc = await userRef.get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    if (data.isBanned) return alert("🔨 CONTA BANIDA!");
-                    if (data.password === pass) {
-                        finalizeLogin(user, pass);
-                    } else {
-                        alert("Senha incorreta!");
+            if (!user || !pass) { alert("Preencha usuário e senha!"); return; }
+
+            db.collection('users').doc(user).get().then((doc) => {
+                if (doc.exists && doc.data().password === pass) {
+                    usuarioLogado = doc.data();
+                    usuarioLogado.id = doc.id;
+                    
+                    localStorage.setItem('autoLoginUser', user);
+                    localStorage.setItem('autoLoginPass', pass);
+                    
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appScreen').style.display = 'flex';
+                    document.getElementById('btnAbrirChat').style.display = 'flex';
+                    document.getElementById('userBalance').innerText = `Saldo: ${usuarioLogado.balance} FC$`;
+
+                    if (usuarioLogado.isAdmin === true) {
+                        document.getElementById('btnAdmin').style.display = 'inline-block';
                     }
+
+                    // Listener do Saldo
+                    db.collection('users').doc(user).onSnapshot((snap) => {
+                        if(snap.exists) {
+                            usuarioLogado.balance = snap.data().balance;
+                            document.getElementById('userBalance').innerText = `Saldo: ${usuarioLogado.balance} FC$`;
+                        }
+                    });
+
+                    // Puxar custo geral no inicio
+                    db.collection("config_geral").doc("valores").onSnapshot((docConfig) => {
+                        if (docConfig.exists && docConfig.data().custoGeral) {
+                            custoGeralAtual = docConfig.data().custoGeral;
+                        }
+                    });
+
+                    iniciarChat();
+                    iniciarListenerListaSorteios();
                 } else {
-                    await userRef.set({ username: user, password: pass, balance: 0.00, isAdmin: false, uid: user });
-                    finalizeLogin(user, pass);
+                    alert("Usuário não existe ou senha incorreta!");
+                    fazerLogoff();
                 }
-            } catch (error) {
-                alert("Erro ao entrar: " + error.message);
-            }
+            }).catch((error) => alert("Erro de conexão com o banco de dados."));
         }
 
-        function finalizeLogin(user, pass) {
-            localStorage.setItem('flatCapsUser', user);
-            localStorage.setItem('flatCapsPass', pass);
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            document.body.classList.remove('login-lock');
-            loadUserData(user);
+        function fazerLogoff() {
+            localStorage.removeItem('autoLoginUser');
+            localStorage.removeItem('autoLoginPass');
+            location.reload();
         }
 
-        function logout() {
-            if(!confirm("Sair da sua conta?")) return;
-            localStorage.removeItem('flatCapsUser');
-            localStorage.removeItem('flatCapsPass');
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-screen').classList.add('hidden');
-            document.getElementById('login-pass').value = ''; 
-            document.body.classList.add('login-lock');
-            
-            currentUserData = null;
-            if(ticketStatusUnsubscribe) ticketStatusUnsubscribe();
-            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
-            if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
+        function mostrarAdmin() {
+            const panel = document.getElementById('adminPanel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        function showTab(tabName) {
-            ['profile', 'tickets', 'admin'].forEach(t => {
-                const sec = document.getElementById(`sec-${t}`);
-                const tab = document.getElementById(`tab-${t}`);
-                if (sec) sec.classList.add('hidden');
-                if (tab) tab.classList.remove('active');
-            });
-            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+        // 4. Chat Global
+        function toggleChat() {
+            const chat = document.getElementById('chatContainer');
+            chat.style.display = (chat.style.display === 'none' || chat.style.display === '') ? 'flex' : 'none';
         }
 
-        function showAdminTab(tabName) {
-            ['banco', 'tickets'].forEach(t => {
-                const sec = document.getElementById(`admin-tab-${t}`);
-                const btn = document.getElementById(`btn-adm-${t}`);
-                if (sec) sec.classList.remove('active');
-                if (btn) btn.classList.remove('active');
-            });
-            document.getElementById(`admin-tab-${tabName}`).classList.add('active');
-            document.getElementById(`btn-adm-${tabName}`).classList.add('active');
-            
-            if(tabName === 'tickets') adminLoadTickets();
-        }
-
-        function loadUserData(uid) {
-            db.collection('users').doc(uid).onSnapshot(doc => {
-                if (doc.exists) {
-                    currentUserData = doc.data();
-                    document.getElementById('lbl-user').innerText = currentUserData.username;
-                    document.getElementById('lbl-balance').innerText = parseFloat(currentUserData.balance).toFixed(2);
-                    
-                    if(currentUserData.isAdmin) {
-                        document.getElementById('tab-admin').classList.remove('hidden');
-                        loadAdminUsersList();
-                    }
-                    userCheckActiveTicket();
-                }
-            });
-        }
-
-        async function redeemCode() {
-            const code = document.getElementById('promo-code').value;
-            if (code === "19052010" || code === "Deuseminhaluz") {
-                await db.collection('users').doc(currentUserData.uid).update({ isAdmin: true });
-                alert("Você agora é um Administrador!");
-                document.getElementById('promo-code').value = '';
-            } else {
-                alert("Código inválido!");
-            }
-        }
-
-        function userCheckActiveTicket() {
-            if(ticketStatusUnsubscribe) ticketStatusUnsubscribe();
-            
-            ticketStatusUnsubscribe = db.collection('tickets')
-                .where('userId', '==', currentUserData.uid)
-                .where('status', 'in', ['aberto', 'em_atendimento'])
-                .onSnapshot(snap => {
-                    if(!snap.empty) {
-                        const tDoc = snap.docs[0];
-                        currentTicketId = tDoc.id;
-                        const data = tDoc.data();
-                        
-                        document.getElementById('ticket-creation-panel').classList.add('hidden');
-                        document.getElementById('feedback-panel').classList.add('hidden');
-                        document.getElementById('ticket-chat-panel').classList.remove('hidden');
-                        
-                        const header = document.getElementById('ticket-status-header');
-                        if(data.status === 'em_atendimento' && data.adminName) {
-                            header.innerHTML = `✅ Atendente <span style="color:#fff">${data.adminName}</span> está cuidando do seu chamado.`;
-                        } else {
-                            header.innerHTML = `⏳ Aguardando um administrador assumir o chamado...`;
-                        }
-                        
-                        userListenToMessages(currentTicketId);
-                    } else {
-                        if (currentTicketId !== null) {
-                            document.getElementById('ticket-chat-panel').classList.add('hidden');
-                            document.getElementById('feedback-panel').classList.remove('hidden'); 
-                            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
-                        } else {
-                            document.getElementById('feedback-panel').classList.add('hidden');
-                            document.getElementById('ticket-creation-panel').classList.remove('hidden');
-                            document.getElementById('ticket-chat-panel').classList.add('hidden');
-                        }
-                    }
-                }, error => {
-                    console.error(error);
-                });
-        }
-
-        async function userCreateTicket() {
-            if(currentTicketId) return alert("Você já possui um ticket aberto!");
-            const type = document.getElementById('new-ticket-type').value;
-            
-            try {
-                const ticketRef = await db.collection('tickets').add({
-                    userId: currentUserData.uid,
-                    userName: currentUserData.username,
-                    type: type,
-                    status: 'aberto',
-                    adminName: null,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
+        function iniciarChat() {
+            db.collection('chat_2').orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
+                const msgsDiv = document.getElementById('chatMessages');
+                msgsDiv.innerHTML = '';
+                let docs = snapshot.docs;
                 
-                await db.collection('ticket_messages').add({
-                    ticketId: ticketRef.id,
-                    text: `[SISTEMA] Chamado aberto. Assunto: ${type}. Aguarde um administrador. Limite máximo: 40 mensagens no chat.`,
-                    author: 'Sistema',
-                    isAdmin: true,
-                    isSystem: true,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                if (docs.length > 15) {
+                    const docsParaApagar = docs.slice(0, docs.length - 15);
+                    docsParaApagar.forEach(d => db.collection('chat_2').doc(d.id).delete());
+                    docs = docs.slice(docs.length - 15);
+                }
+
+                docs.forEach(doc => {
+                    const data = doc.data();
+                    const msgEl = document.createElement('div');
+                    msgEl.innerHTML = `<b style="color:var(--highlight)">${data.user}:</b> <span style="color:#ddd">${data.mensagem}</span>`;
+                    msgsDiv.appendChild(msgEl);
                 });
-            } catch(e) {
-                alert("Erro ao criar ticket: " + e.message);
-            }
+                msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            });
         }
 
-        async function sendTicketMessage() {
-            if(!currentTicketId) return;
-            if(activeMessageCount >= 40) return alert("Limite de 40 mensagens atingido neste ticket!");
-            
-            const input = document.getElementById('ticket-input');
-            const text = input.value.trim();
-            if(!text) return;
-            
+        function enviarMensagemChat() {
+            const input = document.getElementById('chatMsg');
+            const msg = input.value.trim();
+            if (!msg || !usuarioLogado) return;
+            db.collection('chat_2').add({
+                user: usuarioLogado.id, mensagem: msg, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
             input.value = '';
-            try {
-                await db.collection('ticket_messages').add({
-                    ticketId: currentTicketId,
-                    text: text,
-                    author: currentUserData.username,
-                    isAdmin: currentUserData.isAdmin || false,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch(e) {
-                alert("Erro ao enviar: " + e.message);
+        }
+
+        // 5. Admin Criação
+        function agendarSorteio() {
+            const codigo = document.getElementById('codigoSorteio').value;
+            const dataHoraStr = document.getElementById('dataHora').value;
+            const max = parseInt(document.getElementById('numMax').value);
+
+            if (!codigo || !dataHoraStr || !max || max < 2 || max > 4) {
+                alert("Preencha todos os campos corretamente.");
+                return;
             }
-        }
 
-        function userListenToMessages(ticketId) {
-            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
-            
-            // Removido o orderBy() para não bugar por falta de índice no Firebase
-            ticketMessagesUnsubscribe = db.collection('ticket_messages')
-                .where('ticketId', '==', ticketId)
-                .onSnapshot(snap => {
-                    const box = document.getElementById('ticket-messages');
-                    box.innerHTML = '';
-                    activeMessageCount = snap.size;
-                    document.getElementById('user-msg-limit').innerText = `Mensagens: ${activeMessageCount}/40 permitidas`;
-                    
-                    let msgs = [];
-                    snap.forEach(doc => msgs.push(doc.data()));
-                    
-                    // Ordenando diretamente no JavaScript
-                    msgs.sort((a, b) => {
-                        let ta = a.timestamp ? a.timestamp.toMillis() : Date.now();
-                        let tb = b.timestamp ? b.timestamp.toMillis() : Date.now();
-                        return ta - tb;
-                    });
-                    
-                    msgs.forEach(m => {
-                        let html = '';
-                        if(m.isSystem) {
-                            html = `<div class="msg system">${m.text}</div>`;
-                        } else {
-                            html = `
-                                <div class="msg ${m.isAdmin ? 'admin' : ''}">
-                                    <div class="msg-header">
-                                        <span>${m.isAdmin ? '👑 ' : ''}${m.author}</span>
-                                    </div>
-                                    <div>${m.text}</div>
-                                </div>
-                            `;
-                        }
-                        box.innerHTML += html;
-                    });
-                    box.scrollTop = box.scrollHeight;
-                }, error => {
-                    alert("Erro ao carregar mensagens: " + error.message);
-                });
-        }
-
-        async function sendFeedback() {
-            const rating = document.getElementById('feedback-rating').value;
-            const text = document.getElementById('feedback-text').value;
-
-            try {
-                await db.collection('feedbacks').add({
-                    userId: currentUserData.uid,
-                    userName: currentUserData.username,
-                    rating: rating,
-                    text: text,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                alert("Obrigado pela sua avaliação!");
-                currentTicketId = null; 
-                document.getElementById('feedback-panel').classList.add('hidden');
-                document.getElementById('ticket-creation-panel').classList.remove('hidden');
-            } catch(e) {
-                alert("Erro ao enviar feedback: " + e.message);
+            const timestampSorteio = new Date(dataHoraStr).getTime();
+            if (timestampSorteio <= new Date().getTime()) {
+                alert("A data/hora deve ser no futuro!");
+                return;
             }
+
+            const numeroSorteado = Math.floor(Math.random() * max) + 1;
+
+            db.collection("sorteios").add({
+                codigo: codigo,
+                dataAgendada: timestampSorteio,
+                numeroMaximo: max,
+                vencedor: numeroSorteado,
+                criadoEm: new Date().getTime(),
+                custoBilhete: custoGeralAtual // Nasce com o valor geral por padrão
+            }).then(() => {
+                alert("Sorteio criado com sucesso!");
+                document.getElementById('codigoSorteio').value = '';
+                document.getElementById('dataHora').value = '';
+            });
         }
 
-        function adminLoadTickets() {
-            db.collection('tickets').where('status', 'in', ['aberto', 'em_atendimento']).get().then(snap => {
-                const list = document.getElementById('admin-tickets-list');
-                list.innerHTML = '';
-                
-                if(snap.empty) {
-                    list.innerHTML = '<p>Nenhum ticket aberto no momento.</p>';
+        function configurarValorGeral() {
+            const custo = parseFloat(document.getElementById('confCustoGeral').value);
+            if (!custo || custo <= 0) { alert("Preencha um valor válido!"); return; }
+
+            db.collection("config_geral").doc("valores").set({ custoGeral: custo }).then(() => {
+                alert(`Valor geral atualizado para ${custo} FC$!`);
+            });
+        }
+
+        // 6. Listagem de Sorteios Simplificada e Estável
+        function iniciarListenerListaSorteios() {
+            db.collection("sorteios").orderBy("dataAgendada", "asc").onSnapshot((snapshot) => {
+                const listaEl = document.getElementById('listaSorteios');
+                listaEl.innerHTML = '';
+                const agora = new Date().getTime();
+                const quatroHorasMs = 4 * 60 * 60 * 1000;
+
+                if(snapshot.empty) {
+                    listaEl.innerHTML = '<p style="font-size: 1.2rem; color: #aaa;">Nenhuma sala disponível no momento. Volte mais tarde!</p>';
                     return;
                 }
-                
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    const statusText = t.status === 'aberto' ? '🔴 Aguardando' : `🟡 Em atendimento (${t.adminName})`;
+
+                snapshot.docs.forEach((doc) => {
+                    const data = doc.data();
+                    const momentoDeletar = data.dataAgendada + quatroHorasMs;
+
+                    if (agora >= momentoDeletar) {
+                        db.collection("sorteios").doc(doc.id).delete();
+                        return;
+                    }
+
+                    const isEncerrado = agora >= data.dataAgendada;
                     
-                    list.innerHTML += `
-                        <div style="background: rgba(0,0,0,0.5); padding: 15px; margin-bottom: 10px; border: 1px solid var(--vegas-gold); border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h4 style="margin: 0 0 5px 0; color: #fff;">${t.userName}</h4>
-                                <div style="font-size: 13px; color: #aaa;">Assunto: ${t.type}</div>
-                                <div style="font-size: 13px; color: var(--vegas-gold);">${statusText}</div>
-                            </div>
-                            <button class="btn-small" onclick="adminTakeTicket('${doc.id}', '${t.userName}')" style="background: #00bcd4; color: black;">Abrir Chat</button>
+                    const dataObj = new Date(data.dataAgendada);
+                    const hoje = new Date();
+                    let dataFormatada = "";
+                    if(dataObj.toDateString() === hoje.toDateString()) {
+                        dataFormatada = `Hoje às ${dataObj.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+                    } else {
+                        dataFormatada = dataObj.toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'});
+                    }
+
+                    const precoExibicao = data.custoBilhete ? data.custoBilhete : custoGeralAtual;
+
+                    const card = document.createElement('div');
+                    card.className = `sorteio-card ${isEncerrado ? 'encerrado' : ''}`;
+                    card.onclick = () => abrirSorteio(doc.id, data);
+
+                    card.innerHTML = `
+                        <h3>${data.codigo}</h3>
+                        <div class="card-header-flex">
+                            <span class="badge ${isEncerrado ? 'encerrado' : 'ativo'}">${isEncerrado ? 'Finalizado' : 'Aberto'}</span>
+                            <span class="preco-tag">🪙 ${precoExibicao} FC$</span>
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                            <p style="font-size:0.95rem; color:#bbb; margin-bottom: 5px;">🗓️ Início: <span style="color:#fff; font-weight:bold;">${dataFormatada}</span></p>
+                            <p style="font-size:0.95rem; color:#bbb;">🎯 Números da Sorte: <span style="color:#fff; font-weight:bold;">1 até ${data.numeroMaximo}</span></p>
                         </div>
                     `;
+                    listaEl.appendChild(card);
                 });
-            }).catch(e => console.error(e));
-        }
-
-        async function adminTakeTicket(ticketId, userName) {
-            adminActiveTicketId = ticketId;
-            document.getElementById('admin-tickets-list').classList.add('hidden');
-            document.getElementById('admin-active-ticket-panel').classList.remove('hidden');
-            document.getElementById('admin-ticket-title').innerText = `Atendendo: ${userName}`;
-            
-            try {
-                await db.collection('tickets').doc(ticketId).update({
-                    status: 'em_atendimento',
-                    adminName: currentUserData.username
-                });
-                adminListenToActiveTicket(ticketId);
-            } catch(e) {
-                alert("Erro ao assumir ticket: " + e.message);
-            }
-        }
-
-        function adminListenToActiveTicket(ticketId) {
-            if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
-            
-            adminTicketMessagesUnsubscribe = db.collection('ticket_messages')
-                .where('ticketId', '==', ticketId)
-                .onSnapshot(snap => {
-                    const box = document.getElementById('admin-ticket-messages');
-                    box.innerHTML = '';
-                    
-                    activeMessageCount = snap.size; 
-                    document.getElementById('admin-msg-limit').innerText = `Mensagens: ${activeMessageCount}/40 permitidas`;
-                    
-                    let msgs = [];
-                    snap.forEach(doc => msgs.push(doc.data()));
-                    
-                    msgs.sort((a, b) => {
-                        let ta = a.timestamp ? a.timestamp.toMillis() : Date.now();
-                        let tb = b.timestamp ? b.timestamp.toMillis() : Date.now();
-                        return ta - tb;
-                    });
-                    
-                    msgs.forEach(m => {
-                        let html = '';
-                        if(m.isSystem) {
-                            html = `<div class="msg system">${m.text}</div>`;
-                        } else {
-                            html = `
-                                <div class="msg ${m.isAdmin ? 'admin' : ''}">
-                                    <div class="msg-header">
-                                        <span>${m.isAdmin ? '👑 ' : ''}${m.author}</span>
-                                    </div>
-                                    <div>${m.text}</div>
-                                </div>
-                            `;
-                        }
-                        box.innerHTML += html;
-                    });
-                    box.scrollTop = box.scrollHeight;
-                }, error => {
-                    alert("Erro ao carregar mensagens no admin: " + error.message);
-                });
-        }
-
-        async function adminSendTicketMessage() {
-            if(!adminActiveTicketId) return;
-            if(activeMessageCount >= 40) return alert("Limite de 40 mensagens atingido neste ticket!");
-            
-            const input = document.getElementById('admin-ticket-input');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            input.value = '';
-            try {
-                await db.collection('ticket_messages').add({
-                    ticketId: adminActiveTicketId,
-                    text: text,
-                    author: currentUserData.username,
-                    isAdmin: true,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch(e) {
-                alert("Erro ao enviar resposta: " + e.message);
-            }
-        }
-
-        function adminCloseTicketView() {
-            adminActiveTicketId = null;
-            if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
-            document.getElementById('admin-active-ticket-panel').classList.add('hidden');
-            document.getElementById('admin-tickets-list').classList.remove('hidden');
-            adminLoadTickets();
-        }
-
-        async function adminForceCloseTicket() {
-            if(!adminActiveTicketId) return;
-            if(!confirm("Deseja baixar o histórico do chat (.txt) e APAGAR esse ticket permanentemente do banco de dados?")) return;
-
-            try {
-                const msgsSnap = await db.collection('ticket_messages')
-                    .where('ticketId', '==', adminActiveTicketId).get();
-
-                // Ordena os arquivos para o .txt no JS
-                let msgsArray = [];
-                msgsSnap.forEach(doc => msgsArray.push({ id: doc.id, ref: doc.ref, data: doc.data() }));
-                msgsArray.sort((a, b) => {
-                    let ta = a.data.timestamp ? a.data.timestamp.toMillis() : Date.now();
-                    let tb = b.data.timestamp ? b.data.timestamp.toMillis() : Date.now();
-                    return ta - tb;
-                });
-
-                let historyText = "--- HISTÓRICO DE ATENDIMENTO FLAT CAPS ---\n";
-                historyText += `Ticket ID: ${adminActiveTicketId}\nData Encerramento: ${new Date().toLocaleString()}\n\n`;
-
-                const batch = db.batch();
-
-                msgsArray.forEach(item => {
-                    const m = item.data;
-                    const date = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleString() : "Data desconhecida";
-                    historyText += `[${date}] ${m.author}: ${m.text}\n`;
-                    batch.delete(item.ref);
-                });
-
-                const blob = new Blob([historyText], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `Ticket_FlatCaps_${adminActiveTicketId}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-
-                const ticketRef = db.collection('tickets').doc(adminActiveTicketId);
-                batch.delete(ticketRef);
-                await batch.commit();
-
-                alert("Ticket convertido em .txt e apagado do Banco de Dados com sucesso!");
-                adminCloseTicketView();
-                
-            } catch (error) {
-                alert("Ocorreu um erro ao deletar o ticket: " + error.message);
-            }
-        }
-
-        function loadAdminUsersList() {
-            db.collection('users').get().then(snap => {
-                const sel = document.getElementById('admin-user-select');
-                if(!sel) return;
-                sel.innerHTML = '<option value="">Selecione um jogador...</option>';
-                snap.forEach(doc => { sel.innerHTML += `<option value="${doc.id}">${doc.data().username}</option>`; });
             });
         }
 
-        async function modifyBalance(targetUid, amount) {
-            try {
-                const targetRef = db.collection('users').doc(targetUid);
-                const doc = await targetRef.get();
-                if(doc.exists) {
-                    const currentBalance = parseFloat(doc.data().balance || 0);
-                    let newBalance = currentBalance + amount;
-                    if(newBalance < 0) newBalance = 0;
-                    await targetRef.update({ balance: newBalance });
-                    alert(`Saldo atualizado com sucesso!`);
+        // 7. Tela do Sorteio Individual & Matemática
+        function abrirSorteio(id, dataSorteio) {
+            sorteioSelecionadoId = id;
+            
+            custoAtualSorteio = dataSorteio.custoBilhete ? dataSorteio.custoBilhete : custoGeralAtual;
+
+            document.getElementById('viewListaSorteios').style.display = 'none';
+            document.getElementById('viewSorteio').style.display = 'flex';
+            document.getElementById('tituloSorteioInd').innerText = dataSorteio.codigo;
+            document.getElementById('infoCustoSorteio').innerHTML = `🪙 Bilhete: ${custoAtualSorteio} FC$`;
+
+            if(listenerSorteioIndividual) listenerSorteioIndividual(); 
+            if(listenerCompradoresRealTime) listenerCompradoresRealTime();
+
+            listenerSorteioIndividual = db.collection("sorteios").doc(id).onSnapshot((doc) => {
+                if (doc.exists) {
+                    sorteioAtualData = doc.data();
+                    custoAtualSorteio = sorteioAtualData.custoBilhete ? sorteioAtualData.custoBilhete : custoGeralAtual;
+                    document.getElementById('infoCustoSorteio').innerHTML = `🪙 Bilhete: ${custoAtualSorteio} FC$`;
+                    
+                    iniciarRelogioIndividual();
+                } else {
+                    alert("A sala foi fechada pelo administrador.");
+                    voltarParaLista();
                 }
-            } catch(e) {
-                alert("Erro ao alterar saldo: " + e.message);
+            });
+
+            listenerCompradoresRealTime = db.collection("sorteios").doc(id).collection("compradores").onSnapshot((snapshot) => {
+                atualizarOpcoesCompra(snapshot.docs);
+            });
+        }
+
+        function atualizarOpcoesCompra(docsCompradores) {
+            if (!sorteioAtualData || statusSorteio !== 'AGUARDANDO') return;
+            
+            const gridEl = document.getElementById('opcoesNumeros');
+            gridEl.innerHTML = '';
+            
+            let totalBilhetes = docsCompradores.length;
+            let contagemNumeros = {};
+            
+            for(let i = 1; i <= sorteioAtualData.numeroMaximo; i++) {
+                contagemNumeros[i] = 0;
+            }
+
+            docsCompradores.forEach((doc) => {
+                const num = doc.data().numero;
+                if(contagemNumeros[num] !== undefined) contagemNumeros[num]++;
+            });
+
+            for(let i = 1; i <= sorteioAtualData.numeroMaximo; i++) {
+                const qtyEsseNumero = contagemNumeros[i];
+                const qtyOutrosNumeros = totalBilhetes - qtyEsseNumero;
+                
+                let multiplicadorAtual = 1.50 - (qtyEsseNumero * 0.20) + (qtyOutrosNumeros * 0.30);
+                if (multiplicadorAtual < 0.1) multiplicadorAtual = 0.1;
+                
+                const premioPrevisto = custoAtualSorteio * multiplicadorAtual;
+
+                const btn = document.createElement('div');
+                btn.className = 'btn-numero';
+                btn.onclick = () => comprarTicket(i);
+                
+                btn.innerHTML = `
+                    <span class="num-title">${i}</span>
+                    <span class="num-stats">👥 ${qtyEsseNumero} Apostas</span>
+                    <span class="num-prize">Retorno: ${premioPrevisto.toFixed(2)} FC$</span>
+                `;
+                
+                gridEl.appendChild(btn);
             }
         }
 
-        async function adminTransferMoney(isAdd) {
-            const uid = document.getElementById('admin-user-select').value;
-            const amt = parseFloat(document.getElementById('admin-money-amount').value);
-            if(!uid || isNaN(amt) || amt <= 0) return alert("Selecione um jogador e um valor válido!");
-            const factor = isAdd ? 1 : -1;
-            await modifyBalance(uid, amt * factor);
-            document.getElementById('admin-money-amount').value = '';
+        function voltarParaLista() {
+            if(listenerSorteioIndividual) listenerSorteioIndividual();
+            if(listenerCompradoresRealTime) listenerCompradoresRealTime();
+            if(intervaloTimer) clearInterval(intervaloTimer);
+            sorteioSelecionadoId = null;
+            sorteioAtualData = null;
+            document.getElementById('viewSorteio').style.display = 'none';
+            document.getElementById('viewListaSorteios').style.display = 'flex';
+        }
+
+        // 8. Lógica de Compra Respeitando Preços Individuais
+        function comprarTicket(numEscolhido) {
+            if (!usuarioLogado || !sorteioSelecionadoId || !sorteioAtualData) return;
+
+            if (new Date().getTime() >= sorteioAtualData.dataAgendada) {
+                alert("As apostas para esta sala foram encerradas!");
+                document.getElementById('areaCompra').style.display = 'none';
+                return;
+            }
+
+            if(confirm(`Confirmar aposta de ${custoAtualSorteio} FC$ no Número ${numEscolhido}?`)) {
+                const ticketsRef = db.collection("sorteios").doc(sorteioSelecionadoId).collection("compradores");
+                
+                ticketsRef.get().then((snapshot) => {
+                    let qtyNumeroEscolhido = 0;
+                    let qtyOutrosNumeros = 0;
+
+                    snapshot.forEach((doc) => {
+                        if (doc.data().numero === numEscolhido) {
+                            qtyNumeroEscolhido++;
+                        } else {
+                            qtyOutrosNumeros++;
+                        }
+                    });
+
+                    let multiplicadorAtual = 1.50 - (qtyNumeroEscolhido * 0.20) + (qtyOutrosNumeros * 0.30);
+                    if (multiplicadorAtual < 0.1) multiplicadorAtual = 0.1; 
+                    
+                    let premioGarantido = custoAtualSorteio * multiplicadorAtual;
+
+                    if (usuarioLogado.balance >= custoAtualSorteio) {
+                        db.collection('users').doc(usuarioLogado.id).update({
+                            balance: firebase.firestore.FieldValue.increment(-custoAtualSorteio)
+                        }).then(() => {
+                            ticketsRef.add({
+                                numero: numEscolhido,
+                                user: usuarioLogado.id,
+                                premio: parseFloat(premioGarantido.toFixed(2)),
+                                custo: custoAtualSorteio, 
+                                multiplicadorAplicado: parseFloat(multiplicadorAtual.toFixed(2)),
+                                dataCompra: new Date().getTime(),
+                                premioEntregue: false
+                            }).then(() => {
+                                alert(`✅ Sucesso! Você apostou no #${numEscolhido} pagando ${custoAtualSorteio} FC$.\n\nSeu prêmio garantido em caso de vitória é de: ${premioGarantido.toFixed(2)} FC$`);
+                            });
+                        });
+                    } else {
+                        alert(`❌ Saldo insuficiente! Você precisa de ${custoAtualSorteio} FC$ para jogar nesta sala.`);
+                    }
+                });
+            }
+        }
+
+        // 9. Relógio e Animação Individual
+        function iniciarRelogioIndividual() {
+            if (intervaloTimer) clearInterval(intervaloTimer);
+            statusSorteio = 'AGUARDANDO';
+            
+            const mainEl = document.getElementById('mainContent');
+            const statusEl = document.getElementById('statusText');
+            const areaCompra = document.getElementById('areaCompra');
+            mainEl.className = 'timer';
+
+            intervaloTimer = setInterval(() => {
+                const agora = new Date().getTime();
+                const diff = sorteioAtualData.dataAgendada - agora;
+
+                if (diff > 0) {
+                    areaCompra.style.display = 'flex';
+                    statusEl.innerText = "A ROLETA GIRA EM:";
+                    statusEl.style.color = "var(--highlight)";
+                    
+                    const horas = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const segundos = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    mainEl.innerText = String(horas).padStart(2, '0') + ":" + String(minutos).padStart(2, '0') + ":" + String(segundos).padStart(2, '0');
+                } else {
+                    clearInterval(intervaloTimer);
+                    areaCompra.style.display = 'none'; 
+                    
+                    if (diff < -5000) { 
+                        mostrarVencedorDireto();
+                    } else {
+                        iniciarAnimacaoDoSorteio();
+                    }
+                }
+            }, 1000);
+        }
+
+        function iniciarAnimacaoDoSorteio() {
+            if (statusSorteio !== 'AGUARDANDO') return;
+            statusSorteio = 'ANIMANDO';
+
+            const mainEl = document.getElementById('mainContent');
+            const statusEl = document.getElementById('statusText');
+            
+            statusEl.innerText = "S O R T E A N D O . . .";
+            statusEl.style.color = "#f1c40f";
+            mainEl.className = 'number-box animando';
+
+            let tempoAnimacao = 0;
+            const tempoTotalAnimacao = 4000;
+            const max = sorteioAtualData.numeroMaximo;
+
+            const shuffleInterval = setInterval(() => {
+                mainEl.innerText = Math.floor(Math.random() * max) + 1;
+                tempoAnimacao += 50;
+
+                if (tempoAnimacao >= tempoTotalAnimacao) {
+                    clearInterval(shuffleInterval);
+                    mostrarVencedorDireto();
+                }
+            }, 50);
+        }
+
+        function mostrarVencedorDireto() {
+            statusSorteio = 'FINALIZADO';
+            const statusEl = document.getElementById('statusText');
+            statusEl.innerText = "O NÚMERO VENCEDOR É";
+            statusEl.style.color = "var(--success)";
+            
+            const mainEl = document.getElementById('mainContent');
+            mainEl.className = 'number-box vencedor'; 
+            mainEl.innerText = sorteioAtualData.vencedor; 
+            
+            document.getElementById('areaCompra').style.display = 'none'; 
+
+            verificarSeGanhou();
+        }
+
+        function verificarSeGanhou() {
+            if (!usuarioLogado || !sorteioSelecionadoId || !sorteioAtualData.vencedor) return;
+
+            const ticketsRef = db.collection("sorteios").doc(sorteioSelecionadoId).collection("compradores");
+
+            ticketsRef.get().then((snapshot) => {
+                let totalPremio = 0;
+                let docsToUpdate = [];
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    if (data.numero === sorteioAtualData.vencedor && data.user === usuarioLogado.id && !data.premioEntregue) {
+                        totalPremio += data.premio;
+                        docsToUpdate.push(doc.id);
+                    }
+                });
+
+                if (totalPremio > 0) {
+                    document.getElementById('winnerPrizeText').innerText = `+${totalPremio.toFixed(2)} FC$`;
+                    document.getElementById('winnerPopup').style.display = 'block';
+
+                    db.collection('users').doc(usuarioLogado.id).update({
+                        balance: firebase.firestore.FieldValue.increment(totalPremio)
+                    });
+
+                    docsToUpdate.forEach(docId => {
+                        ticketsRef.doc(docId).update({
+                            premioEntregue: true
+                        });
+                    });
+                }
+            });
+        }
+
+        function fecharPopup() {
+            document.getElementById('winnerPopup').style.display = 'none';
+        }
+
+        // 10. Limpeza de Banco de Dados
+        function apagarSorteiosEncerrados() {
+            if(confirm("Tem certeza que deseja apagar os sorteios velhos do banco de dados?")) {
+                const agora = new Date().getTime();
+                
+                db.collection("sorteios").get().then((snapshot) => {
+                    let apagados = 0;
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (agora >= data.dataAgendada) {
+                            db.collection("sorteios").doc(doc.id).delete();
+                            apagados++;
+                        }
+                    });
+                    
+                    if (apagados > 0) {
+                        alert(`Limpeza concluída: ${apagados} sala(s) deletada(s).`);
+                    } else {
+                        alert("O banco já está limpo!");
+                    }
+                });
+            }
         }
     </script>
-
 </body>
 </html>
