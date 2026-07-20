@@ -5,217 +5,335 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flat Caps - Cassino & Suporte</title>
     
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- HTML2Canvas (Para baixar os logs como imagem) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
-        /* TEMA LAS VEGAS */
+        /* TEMA PROFISSIONAL & MOBILE FIRST */
         :root {
             --vegas-gold: #ffd700;
+            --vegas-gold-dim: #c5a700;
             --vegas-red: #d32f2f;
             --vegas-bg: #0b0c10;
-            --vegas-panel: rgba(15, 15, 20, 0.9);
+            --vegas-panel: rgba(20, 20, 25, 0.95);
+            --chat-user: #172a1e;
+            --chat-admin: #2b1f11;
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent; /* Remove flash azul no mobile */
         }
         
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--vegas-bg);
-            background-image: radial-gradient(circle at center, #2a0800 0%, var(--vegas-bg) 100%), 
-                              url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='40' font-size='20' opacity='0.05'%3E🎰%3C/text%3E%3Ctext x='55' y='70' font-size='20' opacity='0.05'%3E🃏%3C/text%3E%3Ctext x='35' y='20' font-size='20' opacity='0.05'%3E🎲%3C/text%3E%3C/svg%3E");
-            color: white;
+            background-image: radial-gradient(circle at center, #1a0500 0%, var(--vegas-bg) 100%);
+            color: #f1f1f1;
             min-height: 100vh;
-            overscroll-behavior-y: contain;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain; /* Evita pull-to-refresh acidental */
         }
 
-        body.login-lock { overflow: hidden; height: 100vh; }
+        body.login-lock { display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
 
         .container {
-            width: 100%; max-width: 100vw; margin: 0 auto; padding: 10px; box-sizing: border-box;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh;
+            width: 100%; max-width: 800px; margin: 0 auto; padding: 15px;
+            display: flex; flex-direction: column; min-height: 100vh;
         }
-        #app-screen { width: 100%; max-width: 800px; }
         
-        .nav-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 20px; }
-        .nav-bar button { flex: 1 1 30%; font-size: 14px; padding: 12px 5px; background: #222; color: white; border: 1px solid #444; border-radius: 5px; }
-        .nav-bar button.active { background: var(--vegas-gold); color: black; font-weight: bold; border-color: var(--vegas-gold); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        /* ANIMAÇÕES SUAVES */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-tab { animation: slideUpFade 0.4s ease-out forwards; }
+
+        /* NAVEGAÇÃO MOBILE */
+        .nav-bar { 
+            display: flex; gap: 8px; margin-bottom: 20px; 
+            flex-wrap: wrap; justify-content: center;
+        }
+        .nav-bar button { 
+            flex: 1 1 45%; /* Fica 2x2 no mobile */
+            font-size: 14px; padding: 14px 10px; background: #1a1a1a; 
+            color: #fff; border: 1px solid #333; border-radius: 10px; 
+            font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .nav-bar button.active { 
+            background: var(--vegas-gold); color: #000; border-color: var(--vegas-gold); 
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2); 
+        }
+
+        /* INPUTS E BOTÕES - ALVOS DE TOQUE MAIORES (TOUCH TARGETS) */
+        input, button, textarea, select { 
+            font-family: inherit; font-size: 16px; width: 100%; 
+            padding: 16px; margin: 8px 0; border-radius: 10px; 
+            border: 1px solid #444; outline: none; transition: all 0.2s; 
+        }
+        input:focus, textarea:focus, select:focus { border-color: var(--vegas-gold); background: #222; }
+        input, textarea, select { background: #181818; color: #fff; }
         
-        input, button, textarea, select { font-size: 16px; width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; box-sizing: border-box; }
-        input, textarea, select { background: rgba(255,255,255,0.9); color: black; }
+        button { background: var(--vegas-gold); color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; border: none; }
+        button:active { transform: scale(0.98); }
         
-        button { background: var(--vegas-gold); color: #000; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        button:hover { background: #e6b800; transform: scale(1.02); }
-        
-        .btn-small { width: auto; padding: 8px 15px; font-size: 13px; }
+        .btn-small { width: auto; padding: 12px 18px; font-size: 13px; margin: 0; }
         .btn-danger { background: var(--vegas-red); color: white; }
-        .btn-danger:hover { background: #b71c1c; }
+        .btn-outline { background: transparent; border: 2px solid var(--vegas-gold); color: var(--vegas-gold); }
 
         .hidden { display: none !important; }
-
-        .card {
-            background: var(--vegas-panel); padding: 20px; border-radius: 12px; border: 2px solid var(--vegas-gold);
-            margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-        }
-
-        h1, h2, h3 { text-align: center; margin-top: 0; text-transform: uppercase; font-style: italic; color: var(--vegas-gold); text-shadow: 2px 2px 4px #000;}
-
-        /* Chat & Tickets */
-        .chat-box { height: 350px; overflow-y: auto; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;}
-        .msg { margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; }
-        .msg.admin { border-left: 5px solid var(--vegas-gold); background: rgba(255, 215, 0, 0.15); }
-        .msg.system { text-align: center; font-style: italic; color: #aaa; background: transparent; border: none; }
-        .msg-header { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; margin-bottom: 5px; }
         
-        /* Message Counter Limit Indicator */
-        .msg-limit-alert { text-align: center; font-size: 12px; color: var(--vegas-gold); margin-top: -5px; margin-bottom: 10px;}
-
-        /* Painel Admin */
-        .admin-panel { border: 1px solid var(--vegas-gold); padding: 15px; border-radius: 8px; margin-bottom: 20px; background: rgba(255, 215, 0, 0.05); }
-        .admin-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--vegas-gold); padding-bottom: 10px; }
-        .admin-nav button { flex: 1 1 45%; background: #333; color: white; border: 1px solid #555; padding: 10px; }
-        .admin-nav button.active { background: var(--vegas-gold); color: black; font-weight: bold; }
+        /* CONSIDERAÇÃO DAS ABAS DO ADMIN */
         .admin-section { display: none; }
         .admin-section.active { display: block; }
-        .flex-row { display: flex; gap: 10px; align-items: center; }
         
-        .neon-title { font-size: 2.5em; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--vegas-gold), 0 0 40px var(--vegas-gold); }
+        /* CONTAINER INVISÍVEL PARA MONTAR A FOTO DO LOG */
+        #secret-log-render { position: absolute; top: -9999px; left: -9999px; width: 600px; background: #0f0f0f; padding: 20px; color: #fff; z-index: -1; }
+
+        /* CARTÕES BASE */
+        .card {
+            background: var(--vegas-panel); padding: 25px 20px; border-radius: 16px; 
+            border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); 
+        }
+
+        h1, h2, h3 { text-align: center; margin-top: 0; color: var(--vegas-gold); letter-spacing: 0.5px; }
+
+        /* GUIA DE USUÁRIO (TUTORIAL) */
+        .tutorial-box {
+            background: rgba(255, 255, 255, 0.05); border-left: 4px solid #00bcd4;
+            padding: 15px; border-radius: 4px 10px 10px 4px; margin-bottom: 20px;
+        }
+        .tutorial-box h4 { margin: 0 0 8px 0; color: #00bcd4; font-size: 15px; display: flex; align-items: center; gap: 5px; }
+        .tutorial-box p { margin: 0; font-size: 13px; color: #bbb; line-height: 1.5; }
+        .tutorial-box li { font-size: 13px; color: #bbb; margin-bottom: 5px; }
+
+        /* CHAT PROFISSIONAL E MOBILE */
+        .chat-container { display: flex; flex-direction: column; gap: 10px; }
+        .chat-box { 
+            height: 50vh; min-height: 350px; max-height: 500px; 
+            overflow-y: auto; background: #0f0f0f; padding: 15px; 
+            border-radius: 12px; border: 1px solid #333; 
+            display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
+        }
+        
+        .msg { max-width: 85%; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg-img { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; margin-top: 5px; }
+        
+        .msg.user { align-self: flex-end; background: var(--chat-user); border-bottom-right-radius: 4px; border-left: 3px solid #4caf50; }
+        .msg.admin { align-self: flex-start; background: var(--chat-admin); border-bottom-left-radius: 4px; border-left: 3px solid var(--vegas-gold); }
+        .msg.system { align-self: center; text-align: center; color: #888; background: transparent; font-size: 12px; border: 1px dashed #444; }
+        
+        .msg-header { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 6px; font-weight: bold; }
+        
+        /* INPUT DE CHAT */
+        .chat-input-area { display: flex; gap: 8px; align-items: center; background: #1a1a1a; padding: 8px; border-radius: 12px; }
+        .chat-input-area input[type="text"] { flex-grow: 1; margin: 0; padding: 15px; border: none; background: #222; }
+        .upload-label { 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            padding: 0 15px; height: 50px; background: #333; border-radius: 10px; color: #fff; font-size: 22px; 
+        }
+
+        /* ADMIN */
+        .ticket-item { background: #222; padding: 15px; margin-bottom: 12px; border: 1px solid #444; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .ticket-info { display: flex; flex-direction: column; gap: 5px; }
+        .ticket-info h4 { margin: 0; font-size: 16px; color: #fff; text-align: left;}
+        
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; width: fit-content; }
+        .status-aberto { background: rgba(211, 47, 47, 0.2); color: #ff5252; }
+        .status-atendimento { background: rgba(255, 215, 0, 0.2); color: var(--vegas-gold); }
+        .status-fechado { background: rgba(158, 158, 158, 0.2); color: #9e9e9e; }
+
+        .neon-title { font-size: 2.5em; text-shadow: 0 0 15px var(--vegas-gold); margin-bottom: 20px; }
     </style>
 </head>
 <body class="login-lock">
     <div class="container">
-        <div id="auth-screen" class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: auto; max-width: 400px; width: 100%; box-sizing: border-box;">
-            <h1 class="neon-title">🎰 Flat Caps 🎰</h1>
-            <div id="login-form" style="width: 100%;">
-                <h2>🚪 Entrada</h2>
+        
+        <!-- TELA DE LOGIN -->
+        <div id="auth-screen" class="card animate-tab" style="max-width: 400px; width: 100%; margin: auto;">
+            <h1 class="neon-title">🎰 Flat Caps</h1>
+            <div id="login-form">
+                <h2 style="font-size: 18px; color: #ccc;">Acesso Restrito</h2>
                 <input type="text" id="login-user" placeholder="👤 Seu Nome">
-                <input type="password" id="login-pass" placeholder="🔑 Senha">
-                <button onclick="login()">Entrar 🚀</button>
+                <input type="password" id="login-pass" placeholder="🔑 Sua Senha">
+                <button onclick="login()" style="margin-top: 15px;">Entrar no Cassino</button>
             </div>
         </div>
 
+        <!-- TELA DO APLICATIVO -->
         <div id="app-screen" class="hidden">
             <div class="nav-bar">
-                <button id="tab-profile" class="active" onclick="showTab('profile')">Saguão</button>
-                <button id="tab-tickets" onclick="showTab('tickets')">Suporte / Ajuda</button>
-                <button id="tab-sorteios" onclick="window.open('https://flapcaps.github.io/Flap-Caps/Sorteio/', '_blank')" style="background: #00bcd4; color: black; border-color: #fff;">Sorteios VIP</button>
-                <button id="tab-admin" class="hidden" onclick="showTab('admin')" style="background: #1b5e20; border-color: var(--vegas-gold);">Admin</button>
+                <button id="tab-profile" class="active" onclick="showTab('profile')">🏠 Saguão</button>
+                <button id="tab-tickets" onclick="showTab('tickets')">🎧 Suporte</button>
+                <button id="tab-sorteios" onclick="window.open('https://flapcaps.github.io/Flap-Caps/Sorteio/', '_blank')" style="background: #00838f; color: white; border-color: #00bcd4;">🎁 Sorteios</button>
+                <button id="tab-admin" class="hidden" onclick="showTab('admin')" style="background: #2e7d32; border-color: #4caf50;">👑 Admin</button>
             </div>
 
-            <!-- PERFIL -->
-            <div id="sec-profile" class="card">
-                <h2>Seu Perfil</h2>
-                <p><strong>Jogador:</strong> <span id="lbl-user"></span></p>
-                <h3 style="color: var(--vegas-gold); font-size: 32px; text-shadow: 0 0 10px rgba(255,215,0,0.5);">Saldo: <span id="lbl-balance">0.00</span> FC$</h3>
-                <div style="margin-top: 30px; border-top: 1px solid #555; padding-top: 20px;">
-                    <h4>Resgatar Fichas (Código)</h4>
-                    <input type="text" id="promo-code" placeholder="Insira o código aqui">
-                    <button onclick="redeemCode()">Resgatar</button>
+            <!-- PERFIL / SAGUÃO -->
+            <div id="sec-profile" class="card animate-tab">
+                <h2>Seu Saguão</h2>
+                
+                <div class="tutorial-box">
+                    <h4>💡 Guia Rápido: Como funciona?</h4>
+                    <p>Aqui é o seu perfil oficial do cassino. <br>
+                    - Seu <strong>Saldo (FC$)</strong> é o dinheiro virtual do jogo.<br>
+                    - Vá na aba <strong>🎧 Suporte</strong> para comprar mais FC$ </p>
                 </div>
-                <div style="margin-top: 30px; border-top: 1px solid var(--vegas-red); padding-top: 20px; text-align: center;">
-                    <button class="btn-danger" onclick="logout()" style="max-width: 200px;">🚪 Sair da Conta</button>
+
+                <div style="text-align: center; background: #121212; padding: 25px 15px; border-radius: 12px; border: 1px solid #333;">
+                    <p style="font-size: 16px; margin: 0 0 10px 0; color: #aaa;">Jogador: <strong id="lbl-user" style="color: #fff;"></strong></p>
+                    <h3 style="color: var(--vegas-gold); font-size: 38px; margin: 0; text-shadow: 0 0 10px rgba(255,215,0,0.4);">
+                        <span id="lbl-balance">0.00</span> <span style="font-size: 20px;">FC$</span>
+                    </h3>
+                </div>
+                
+                <div style="margin-top: 25px;">
+                    <h4 style="color: #ccc; margin-bottom: 5px; font-size: 15px;">Tem um Código Promocional?</h4>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="promo-code" placeholder="Insira o código..." style="margin: 0;">
+                        <button onclick="redeemCode()" style="width: auto; padding: 0 20px; margin: 0;">Usar</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <button class="btn-outline" onclick="logout()">🚪 Sair da Conta</button>
                 </div>
             </div>
 
-            <!-- TICKETS (SUPORTE/COMPRA) -->
-            <div id="sec-tickets" class="card hidden">
-                <h2>🎫 Central de Ajuda & Compras</h2>
+            <!-- TICKETS (SUPORTE / COMPRA) -->
+            <div id="sec-tickets" class="card hidden animate-tab">
+                <h2>🎧 Atendimento</h2>
                 
                 <!-- Criar Novo Ticket -->
                 <div id="ticket-creation-panel">
-                    <p style="text-align: center;">Precisa de algo? Abra um ticket privado com a nossa equipe.</p>
-                    <select id="new-ticket-type">
-                        <option value="Compra de FC$">💰 Quero comprar FC$</option>
-                        <option value="Dúvida Geral">❓ Tenho uma dúvida</option>
-                        <option value="Relatar Problema">⚠️ Relatar um erro ou problema</option>
-                    </select>
-                    <button onclick="userCreateTicket()" style="margin-top: 15px; font-size: 18px; padding: 15px;">Abrir Chamado</button>
+                    <div class="tutorial-box">
+                        <h4>🛒 Guia de Compra:</h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Selecione "Quero comprar FC$".</li>
+                            <li>Inicie o chamado e aguarde o Staff.</li>
+                           
+                        </ul>
+                    </div>
+
+                    <div style="background: #121212; padding: 20px; border-radius: 12px; border: 1px solid #333;">
+                        <select id="new-ticket-type" style="margin-bottom: 15px;">
+                            <option value="Compra de FC$">💰 Quero comprar FC$</option>
+                            <option value="Dúvida Geral">❓ Dúvida geral / Ajuda</option>
+                            <option value="Relatar Problema">⚠️ Relatar um erro</option>
+                        </select>
+                        <button onclick="userCreateTicket()">Iniciar Chamado</button>
+                    </div>
                 </div>
 
-                <!-- Painel de Feedback (Aparece ao encerrar o chat) -->
+                <!-- Painel de Feedback -->
                 <div id="feedback-panel" class="hidden">
-                    <div style="text-align:center; padding: 15px; background: rgba(255,215,0,0.1); border: 1px solid var(--vegas-gold); border-radius: 8px;">
-                        <h3 style="color: var(--vegas-gold);">Seu ticket foi encerrado!</h3>
-                        <p style="font-size: 14px;">O administrador salvou o registro e fechou seu chamado. Avalie seu atendimento:</p>
-                        <select id="feedback-rating" style="margin-bottom: 10px;">
+                    <div style="text-align:center; padding: 25px 15px; background: #121212; border: 1px solid var(--vegas-gold); border-radius: 12px;">
+                        <h3 style="color: var(--vegas-gold); font-size: 20px;">Atendimento Encerrado</h3>
+                        <p style="font-size: 14px; color: #ccc;">Avalie seu atendimento na Staff:</p>
+                        
+                        <select id="feedback-rating">
                             <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
                             <option value="4">⭐⭐⭐⭐ Muito Bom</option>
                             <option value="3">⭐⭐⭐ Bom</option>
                             <option value="2">⭐⭐ Ruim</option>
                             <option value="1">⭐ Péssimo</option>
                         </select>
-                        <textarea id="feedback-text" placeholder="Deixe um comentário sobre o suporte (opcional)..." rows="3"></textarea>
-                        <button onclick="sendFeedback()" style="margin-top: 15px;">Enviar Avaliação e Voltar</button>
+                        <textarea id="feedback-text" placeholder="Deixe um comentário (opcional)..." rows="3"></textarea>
+                        
+                        <button onclick="sendFeedback()">Enviar Avaliação</button>
                     </div>
                 </div>
 
-                <!-- Chat do Ticket Ativo -->
-                <div id="ticket-chat-panel" class="hidden">
-                    <div id="ticket-status-header" style="text-align:center; margin-bottom:15px; font-weight:bold; font-size: 16px; color: var(--vegas-gold); background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;"></div>
-                    <div class="msg-limit-alert" id="user-msg-limit">Mensagens: 0/40 permitidas</div>
+                <!-- Chat do Usuário -->
+                <div id="ticket-chat-panel" class="hidden chat-container">
+                    <div id="ticket-status-header" style="text-align:center; font-size: 13px; color: var(--vegas-gold); background: #1a1a1a; padding: 12px; border-radius: 8px;"></div>
+                    
                     <div class="chat-box" id="ticket-messages"></div>
                     
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="ticket-input" placeholder="Digite sua mensagem..." onkeypress="if(event.key === 'Enter') sendTicketMessage()">
-                        <button onclick="sendTicketMessage()" style="width: 100px;">Enviar</button>
+                    <div class="chat-input-area">
+                        <label for="user-img-upload" class="upload-label">📷</label>
+                        <input type="file" id="user-img-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event, false)">
+                        
+                        <input type="text" id="ticket-input" placeholder="Mensagem..." onkeypress="if(event.key === 'Enter') sendTicketMessage(false)">
+                        <button onclick="sendTicketMessage(false)" style="width: 70px; padding: 0; height: 50px; margin: 0; border-radius: 10px;">Enviar</button>
                     </div>
-                    <!-- Botão de encerrar do usuário removido para evitar que ele exclua sem salvar. O Admin faz a gestão -->
                 </div>
             </div>
 
-            <!-- ADMIN -->
-            <div id="sec-admin" class="card hidden">
-                <h2>Administração</h2>
+            <!-- PAINEL ADMIN -->
+            <div id="sec-admin" class="card hidden animate-tab">
+                <h2>👑 Painel Admin</h2>
                 
-                <div class="admin-nav">
-                    <button id="btn-adm-banco" class="active" onclick="showAdminTab('banco')">💸 Transferir Grana</button>
-                    <button id="btn-adm-tickets" onclick="showAdminTab('tickets')">🎫 Atender Tickets</button>
+                <div class="nav-bar" style="margin-bottom: 20px;">
+                    <button id="btn-adm-tickets" class="active" onclick="showAdminTab('tickets')">🎫 Fila</button>
+                    <button id="btn-adm-logs" onclick="showAdminTab('logs')">📂 Logs</button>
                 </div>
 
-                <!-- ADMIN: GRANA -->
-                <div id="admin-tab-banco" class="admin-section active">
-                    <div class="admin-panel">
-                        <h3>💸 Adicionar / Remover FC$</h3>
-                        <select id="admin-user-select"><option>Carregando jogadores...</option></select>
-                        <div class="flex-row">
-                            <input type="number" id="admin-money-amount" placeholder="Valor (Ex: 50)">
-                            <button onclick="adminTransferMoney(true)" style="background: #2e7d32; color: white;">Dar</button>
-                            <button onclick="adminTransferMoney(false)" class="btn-danger">Tirar</button>
+                <!-- ADMIN: FILA -->
+                <div id="admin-tab-tickets" class="admin-section active">
+                    <div id="admin-tickets-list-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 16px;">🎫 Chamados Abertos</h3>
+                            <button onclick="adminLoadTickets()" class="btn-small btn-outline" style="padding: 8px 12px;">🔄</button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- ADMIN: TICKETS -->
-                <div id="admin-tab-tickets" class="admin-section">
-                    <div class="admin-panel">
-                        <h3>🎫 Fila de Atendimento</h3>
-                        <button onclick="adminLoadTickets()" class="btn-small" style="margin-bottom: 10px;">🔄 Atualizar Lista</button>
                         <div id="admin-tickets-list"></div>
                     </div>
                     
-                    <!-- Área onde o Admin responde um ticket específico -->
-                    <div id="admin-active-ticket-panel" class="hidden admin-panel" style="border-color: #00bcd4; background: rgba(0, 188, 212, 0.1);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                            <h3 id="admin-ticket-title" style="color: #00bcd4; margin: 0;">Atendendo...</h3>
-                            <button class="btn-small btn-danger" onclick="adminCloseTicketView()">Sair do Chat</button>
+                    <!-- Chat Admin -->
+                    <div id="admin-active-ticket-panel" class="hidden chat-container">
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; background: #1a2a2b; padding: 12px; border-radius: 8px; gap: 10px;">
+                            <h3 id="admin-ticket-title" style="color: #00bcd4; margin: 0; font-size: 15px;">Atendendo...</h3>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-small btn-outline" style="padding: 8px; border-color: #555; color: #ccc;" onclick="adminCloseTicketView()">Pausar</button>
+                                <button class="btn-small btn-danger" style="padding: 8px;" onclick="adminForceCloseTicket()">Encerrar</button>
+                            </div>
                         </div>
-                        <div class="msg-limit-alert" id="admin-msg-limit" style="color:#00bcd4;">Mensagens: 0/40 permitidas</div>
-                        <div class="chat-box" id="admin-ticket-messages" style="height: 250px;"></div>
                         
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="admin-ticket-input" placeholder="Sua resposta..." onkeypress="if(event.key === 'Enter') adminSendTicketMessage()">
-                            <button onclick="adminSendTicketMessage()" style="width: 100px; background: #00bcd4; color: black;">Enviar</button>
+                        <div class="chat-box" id="admin-ticket-messages" style="background: #0a1112;"></div>
+                        
+                        <div class="chat-input-area" style="background: #1a2a2b;">
+                            <label for="admin-img-upload" class="upload-label" style="background: #233739;">📷</label>
+                            <input type="file" id="admin-img-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event, true)">
+                            
+                            <input type="text" id="admin-ticket-input" placeholder="Responder..." onkeypress="if(event.key === 'Enter') sendTicketMessage(true)" style="background: #233739;">
+                            <button onclick="sendTicketMessage(true)" style="width: 70px; padding: 0; height: 50px; margin: 0; background: #00bcd4; color: #000; border-radius: 10px;">Enviar</button>
                         </div>
-                        <button class="btn-danger" onclick="adminForceCloseTicket()" style="margin-top:15px; width:100%;">
-                            Baixar TXT e Apagar Ticket Permanentemente
-                        </button>
                     </div>
                 </div>
+
+                          <!-- ADMIN: LOGS (TUTORIAL DA IMAGEM) -->
+                <div id="admin-tab-logs" class="admin-section">
+                    <div id="admin-logs-list-container">
+                        <div class="tutorial-box">
+                            <h4>📸 Exportar Logs para Mobile:</h4>
+                            <p>Por motivos de segurança, você não pode mais ler a conversa pelo aplicativo. Clique em "Baixar Imagem" para exportar o log diretamente para a sua galeria.</p>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 16px; color: #aaa;">📂 Histórico</h3>
+                            <button onclick="adminLoadLogs()" class="btn-small btn-outline" style="padding: 8px 12px;">🔄</button>
+                        </div>
+                        <div id="admin-logs-list"></div>
+                    </div>
+                    
+                    <!-- Container Secreto (Não aparece na tela, serve só pro HTML2Canvas gerar a foto) -->
+                    <div id="secret-log-render">
+                        <h3 id="secret-log-title" style="color: var(--vegas-gold); text-align: center; margin-bottom: 20px;">Log Oficial</h3>
+                        <div class="chat-box" id="secret-log-messages" style="border: none; max-height: none; height: auto; overflow: visible;"></div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
+    
     <script>
-        // === CONFIGURAÇÃO DO FIREBASE ===
+        // === CONFIGURAÇÃO DO FIREBASE (Mantida Intacta) ===
         const firebaseConfig = {
             apiKey: "AIzaSyDxnSJSTHuEnmzMZj-z-1YiTEo8cLLGbKk",
             authDomain: "star-super-v2.firebaseapp.com",
@@ -225,19 +343,18 @@
             appId: "1:279120272242:web:c93061cbc8ca26c21b5beb",
             measurementId: "G-032NH18WM3"
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const auth = firebase.auth();
         const db = firebase.firestore();
 
         let currentUserData = null;
-        let activeMessageCount = 0; 
-        
         let currentTicketId = null;
+        let adminActiveTicketId = null;
+        
         let ticketStatusUnsubscribe = null;
         let ticketMessagesUnsubscribe = null;
-        
-        let adminActiveTicketId = null;
         let adminTicketMessagesUnsubscribe = null;
+        let logMessagesUnsubscribe = null;
 
         window.onload = function() {
             const savedUser = localStorage.getItem('flatCapsUser');
@@ -252,9 +369,7 @@
         async function login() {
             const user = document.getElementById('login-user').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
-            
             if(!user || !pass) return alert("Digite um nome e uma senha!");
-            if(user.length < 3 || user.length > 15) return alert("O nome deve ter entre 3 e 15 letras.");
 
             try {
                 const userRef = db.collection('users').doc(user);
@@ -262,18 +377,13 @@
                 if (doc.exists) {
                     const data = doc.data();
                     if (data.isBanned) return alert("🔨 CONTA BANIDA!");
-                    if (data.password === pass) {
-                        finalizeLogin(user, pass);
-                    } else {
-                        alert("Senha incorreta!");
-                    }
+                    if (data.password === pass) finalizeLogin(user, pass);
+                    else alert("Senha incorreta!");
                 } else {
                     await userRef.set({ username: user, password: pass, balance: 0.00, isAdmin: false, uid: user });
                     finalizeLogin(user, pass);
                 }
-            } catch (error) {
-                alert("Erro ao entrar: " + error.message);
-            }
+            } catch (error) { alert("Erro: " + error.message); }
         }
 
         function finalizeLogin(user, pass) {
@@ -282,24 +392,22 @@
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             document.body.classList.remove('login-lock');
+            
+            // Re-dispara animação
+            document.getElementById('sec-profile').classList.remove('animate-tab');
+            void document.getElementById('sec-profile').offsetWidth; // trigger reflow
+            document.getElementById('sec-profile').classList.add('animate-tab');
+            
             loadUserData(user);
         }
 
         function logout() {
             if(!confirm("Sair da sua conta?")) return;
-            localStorage.removeItem('flatCapsUser');
-            localStorage.removeItem('flatCapsPass');
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-screen').classList.add('hidden');
-            document.getElementById('login-pass').value = ''; 
-            document.body.classList.add('login-lock');
-            
-            currentUserData = null;
-            if(ticketStatusUnsubscribe) ticketStatusUnsubscribe();
-            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
-            if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
+            localStorage.clear();
+            location.reload(); // Recarrega para limpar tudo da memória com segurança no mobile
         }
 
+        // Sistema de abas com animação
         function showTab(tabName) {
             ['profile', 'tickets', 'admin'].forEach(t => {
                 const sec = document.getElementById(`sec-${t}`);
@@ -307,12 +415,19 @@
                 if (sec) sec.classList.add('hidden');
                 if (tab) tab.classList.remove('active');
             });
-            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
+            const activeSec = document.getElementById(`sec-${tabName}`);
+            activeSec.classList.remove('hidden');
+            
+            // Reseta animação para tocar novamente
+            activeSec.classList.remove('animate-tab');
+            void activeSec.offsetWidth; 
+            activeSec.classList.add('animate-tab');
+            
             document.getElementById(`tab-${tabName}`).classList.add('active');
         }
 
         function showAdminTab(tabName) {
-            ['banco', 'tickets'].forEach(t => {
+            ['tickets', 'logs'].forEach(t => {
                 const sec = document.getElementById(`admin-tab-${t}`);
                 const btn = document.getElementById(`btn-adm-${t}`);
                 if (sec) sec.classList.remove('active');
@@ -322,6 +437,7 @@
             document.getElementById(`btn-adm-${tabName}`).classList.add('active');
             
             if(tabName === 'tickets') adminLoadTickets();
+            if(tabName === 'logs') adminLoadLogs();
         }
 
         function loadUserData(uid) {
@@ -333,7 +449,6 @@
                     
                     if(currentUserData.isAdmin) {
                         document.getElementById('tab-admin').classList.remove('hidden');
-                        loadAdminUsersList();
                     }
                     userCheckActiveTicket();
                 }
@@ -344,13 +459,32 @@
             const code = document.getElementById('promo-code').value;
             if (code === "19052010" || code === "Deuseminhaluz") {
                 await db.collection('users').doc(currentUserData.uid).update({ isAdmin: true });
-                alert("Você agora é um Administrador!");
-                document.getElementById('promo-code').value = '';
+                alert("Código aceito! Você agora é um Admin. Recarregue a página.");
+                location.reload();
+            } else if (code === "CHEGA" && currentUserData.isAdmin) {
+                if(confirm("🚨 ALERTA MÁXIMO 🚨\nIsso vai APAGAR TODOS os tickets e logs do banco de dados!\nTem certeza absoluta?")) {
+                    alert("Iniciando exclusão em massa. Isso pode demorar alguns segundos, não feche o aplicativo...");
+                    try {
+                        const ticketsSnap = await db.collection('tickets').get();
+                        for (let doc of ticketsSnap.docs) { await doc.ref.delete(); }
+
+                        const msgsSnap = await db.collection('ticket_messages').get();
+                        for (let doc of msgsSnap.docs) { await doc.ref.delete(); }
+                        
+                        alert("✅ Tudo limpo! O banco de dados de logs e tickets foi zerado completamente.");
+                        location.reload();
+                    } catch(e) {
+                        alert("Erro ao apagar: " + e.message);
+                    }
+                }
             } else {
                 alert("Código inválido!");
             }
         }
 
+        // ==========================================
+        // TICKETS (USUÁRIO)
+        // ==========================================
         function userCheckActiveTicket() {
             if(ticketStatusUnsubscribe) ticketStatusUnsubscribe();
             
@@ -369,12 +503,11 @@
                         
                         const header = document.getElementById('ticket-status-header');
                         if(data.status === 'em_atendimento' && data.adminName) {
-                            header.innerHTML = `✅ Atendente <span style="color:#fff">${data.adminName}</span> está cuidando do seu chamado.`;
+                            header.innerHTML = `🟢 <strong>${data.adminName}</strong> está na escuta.`;
                         } else {
-                            header.innerHTML = `⏳ Aguardando um administrador assumir o chamado...`;
+                            header.innerHTML = `⏳ Procurando um membro da Staff...`;
                         }
-                        
-                        userListenToMessages(currentTicketId);
+                        listenToMessages(currentTicketId, 'ticket-messages');
                     } else {
                         if (currentTicketId !== null) {
                             document.getElementById('ticket-chat-panel').classList.add('hidden');
@@ -386,8 +519,6 @@
                             document.getElementById('ticket-chat-panel').classList.add('hidden');
                         }
                     }
-                }, error => {
-                    console.error(error);
                 });
         }
 
@@ -405,307 +536,240 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                let autoMsg = type === "Compra de FC$" 
+                    ? "💸 TABELA DE PREÇOS:\n▪ 10 FC$ = R$ 10,00\n▪ 50 FC$ = R$ 45,00\n▪ 100 FC$ = R$ 80,00\n\nAguarde o atendente." 
+                    : "Chamado registrado. Detalhe seu problema e um Admin responderá em breve.";
+
                 await db.collection('ticket_messages').add({
-                    ticketId: ticketRef.id,
-                    text: `[SISTEMA] Chamado aberto. Assunto: ${type}. Aguarde um administrador. Limite máximo: 40 mensagens no chat.`,
-                    author: 'Sistema',
-                    isAdmin: true,
-                    isSystem: true,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    ticketId: ticketRef.id, text: autoMsg, type: 'text', author: 'Sistema', isAdmin: true, isSystem: true, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-            } catch(e) {
-                alert("Erro ao criar ticket: " + e.message);
-            }
+            } catch(e) { alert("Erro ao criar: " + e.message); }
         }
 
-        async function sendTicketMessage() {
-            if(!currentTicketId) return;
-            if(activeMessageCount >= 40) return alert("Limite de 40 mensagens atingido neste ticket!");
-            
-            const input = document.getElementById('ticket-input');
+        async function sendFeedback() {
+            try {
+                await db.collection('feedbacks').add({
+                    userId: currentUserData.uid, userName: currentUserData.username,
+                    rating: document.getElementById('feedback-rating').value,
+                    text: document.getElementById('feedback-text').value,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Avaliação enviada!");
+                currentTicketId = null; 
+                document.getElementById('feedback-panel').classList.add('hidden');
+                document.getElementById('ticket-creation-panel').classList.remove('hidden');
+            } catch(e) { alert("Erro: " + e.message); }
+        }
+
+        // ==========================================
+        // MENSAGENS E IMAGENS
+        // ==========================================
+        function handleImageUpload(event, isAdminContext) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64String = e.target.result;
+                const activeId = isAdminContext ? adminActiveTicketId : currentTicketId;
+                if(!activeId) return;
+
+                try {
+                    await db.collection('ticket_messages').add({
+                        ticketId: activeId, text: base64String, type: 'image', author: currentUserData.username, isAdmin: currentUserData.isAdmin || false, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    event.target.value = ''; 
+                } catch(err) { alert("A imagem é muito pesada. Tente enviar um print com menos qualidade."); }
+            };
+            // Reduz qualidade redimensionando no front antes de subir poderia ser feito, mas DataURL puro atende se não for absurdamente grande.
+            reader.readAsDataURL(file); 
+        }
+
+        async function sendTicketMessage(isAdminContext) {
+            const activeId = isAdminContext ? adminActiveTicketId : currentTicketId;
+            if(!activeId) return;
+            const input = document.getElementById(isAdminContext ? 'admin-ticket-input' : 'ticket-input');
             const text = input.value.trim();
             if(!text) return;
             
             input.value = '';
             try {
                 await db.collection('ticket_messages').add({
-                    ticketId: currentTicketId,
-                    text: text,
-                    author: currentUserData.username,
-                    isAdmin: currentUserData.isAdmin || false,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    ticketId: activeId, text: text, type: 'text', author: currentUserData.username, isAdmin: currentUserData.isAdmin || false, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-            } catch(e) {
-                alert("Erro ao enviar: " + e.message);
-            }
+            } catch(e) { alert("Erro: " + e.message); }
         }
 
-        function userListenToMessages(ticketId) {
-            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
+        function renderMessages(snap, containerId) {
+            const box = document.getElementById(containerId);
+            box.innerHTML = '';
+            let msgs = [];
+            snap.forEach(doc => msgs.push(doc.data()));
+            msgs.sort((a, b) => (a.timestamp?.toMillis() || Date.now()) - (b.timestamp?.toMillis() || Date.now()));
             
-            // Removido o orderBy() para não bugar por falta de índice no Firebase
-            ticketMessagesUnsubscribe = db.collection('ticket_messages')
-                .where('ticketId', '==', ticketId)
-                .onSnapshot(snap => {
-                    const box = document.getElementById('ticket-messages');
-                    box.innerHTML = '';
-                    activeMessageCount = snap.size;
-                    document.getElementById('user-msg-limit').innerText = `Mensagens: ${activeMessageCount}/40 permitidas`;
-                    
-                    let msgs = [];
-                    snap.forEach(doc => msgs.push(doc.data()));
-                    
-                    // Ordenando diretamente no JavaScript
-                    msgs.sort((a, b) => {
-                        let ta = a.timestamp ? a.timestamp.toMillis() : Date.now();
-                        let tb = b.timestamp ? b.timestamp.toMillis() : Date.now();
-                        return ta - tb;
-                    });
-                    
-                    msgs.forEach(m => {
-                        let html = '';
-                        if(m.isSystem) {
-                            html = `<div class="msg system">${m.text}</div>`;
-                        } else {
-                            html = `
-                                <div class="msg ${m.isAdmin ? 'admin' : ''}">
-                                    <div class="msg-header">
-                                        <span>${m.isAdmin ? '👑 ' : ''}${m.author}</span>
-                                    </div>
-                                    <div>${m.text}</div>
-                                </div>
-                            `;
-                        }
-                        box.innerHTML += html;
-                    });
-                    box.scrollTop = box.scrollHeight;
-                }, error => {
-                    alert("Erro ao carregar mensagens: " + error.message);
-                });
-        }
-
-        async function sendFeedback() {
-            const rating = document.getElementById('feedback-rating').value;
-            const text = document.getElementById('feedback-text').value;
-
-            try {
-                await db.collection('feedbacks').add({
-                    userId: currentUserData.uid,
-                    userName: currentUserData.username,
-                    rating: rating,
-                    text: text,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                alert("Obrigado pela sua avaliação!");
-                currentTicketId = null; 
-                document.getElementById('feedback-panel').classList.add('hidden');
-                document.getElementById('ticket-creation-panel').classList.remove('hidden');
-            } catch(e) {
-                alert("Erro ao enviar feedback: " + e.message);
-            }
-        }
-
-        function adminLoadTickets() {
-            db.collection('tickets').where('status', 'in', ['aberto', 'em_atendimento']).get().then(snap => {
-                const list = document.getElementById('admin-tickets-list');
-                list.innerHTML = '';
-                
-                if(snap.empty) {
-                    list.innerHTML = '<p>Nenhum ticket aberto no momento.</p>';
-                    return;
+            msgs.forEach(m => {
+                let contentHTML = m.type === 'image' ? `<img src="${m.text}" class="msg-img">` : m.text.replace(/\n/g, '<br>');
+                if(m.isSystem) {
+                    box.innerHTML += `<div class="msg system">${contentHTML}</div>`;
+                } else {
+                    let msgClass = m.isAdmin ? 'admin' : 'user';
+                    box.innerHTML += `
+                        <div class="msg ${msgClass}">
+                            <div class="msg-header"><span>${m.author}</span></div>
+                            <div>${contentHTML}</div>
+                        </div>`;
                 }
-                
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    const statusText = t.status === 'aberto' ? '🔴 Aguardando' : `🟡 Em atendimento (${t.adminName})`;
-                    
-                    list.innerHTML += `
-                        <div style="background: rgba(0,0,0,0.5); padding: 15px; margin-bottom: 10px; border: 1px solid var(--vegas-gold); border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h4 style="margin: 0 0 5px 0; color: #fff;">${t.userName}</h4>
-                                <div style="font-size: 13px; color: #aaa;">Assunto: ${t.type}</div>
-                                <div style="font-size: 13px; color: var(--vegas-gold);">${statusText}</div>
-                            </div>
-                            <button class="btn-small" onclick="adminTakeTicket('${doc.id}', '${t.userName}')" style="background: #00bcd4; color: black;">Abrir Chat</button>
-                        </div>
-                    `;
-                });
-            }).catch(e => console.error(e));
+            });
+            box.scrollTop = box.scrollHeight; // Desce pro fim
         }
 
-        async function adminTakeTicket(ticketId, userName) {
-            adminActiveTicketId = ticketId;
-            document.getElementById('admin-tickets-list').classList.add('hidden');
-            document.getElementById('admin-active-ticket-panel').classList.remove('hidden');
-            document.getElementById('admin-ticket-title').innerText = `Atendendo: ${userName}`;
-            
-            try {
-                await db.collection('tickets').doc(ticketId).update({
-                    status: 'em_atendimento',
-                    adminName: currentUserData.username
-                });
-                adminListenToActiveTicket(ticketId);
-            } catch(e) {
-                alert("Erro ao assumir ticket: " + e.message);
-            }
+        function listenToMessages(ticketId, containerId) {
+            if(ticketMessagesUnsubscribe) ticketMessagesUnsubscribe();
+            ticketMessagesUnsubscribe = db.collection('ticket_messages').where('ticketId', '==', ticketId).onSnapshot(snap => renderMessages(snap, containerId));
         }
 
         function adminListenToActiveTicket(ticketId) {
             if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
-            
-            adminTicketMessagesUnsubscribe = db.collection('ticket_messages')
-                .where('ticketId', '==', ticketId)
-                .onSnapshot(snap => {
-                    const box = document.getElementById('admin-ticket-messages');
-                    box.innerHTML = '';
-                    
-                    activeMessageCount = snap.size; 
-                    document.getElementById('admin-msg-limit').innerText = `Mensagens: ${activeMessageCount}/40 permitidas`;
-                    
-                    let msgs = [];
-                    snap.forEach(doc => msgs.push(doc.data()));
-                    
-                    msgs.sort((a, b) => {
-                        let ta = a.timestamp ? a.timestamp.toMillis() : Date.now();
-                        let tb = b.timestamp ? b.timestamp.toMillis() : Date.now();
-                        return ta - tb;
-                    });
-                    
-                    msgs.forEach(m => {
-                        let html = '';
-                        if(m.isSystem) {
-                            html = `<div class="msg system">${m.text}</div>`;
-                        } else {
-                            html = `
-                                <div class="msg ${m.isAdmin ? 'admin' : ''}">
-                                    <div class="msg-header">
-                                        <span>${m.isAdmin ? '👑 ' : ''}${m.author}</span>
-                                    </div>
-                                    <div>${m.text}</div>
-                                </div>
-                            `;
-                        }
-                        box.innerHTML += html;
-                    });
-                    box.scrollTop = box.scrollHeight;
-                }, error => {
-                    alert("Erro ao carregar mensagens no admin: " + error.message);
-                });
+            adminTicketMessagesUnsubscribe = db.collection('ticket_messages').where('ticketId', '==', ticketId).onSnapshot(snap => renderMessages(snap, 'admin-ticket-messages'));
         }
 
-        async function adminSendTicketMessage() {
-            if(!adminActiveTicketId) return;
-            if(activeMessageCount >= 40) return alert("Limite de 40 mensagens atingido neste ticket!");
-            
-            const input = document.getElementById('admin-ticket-input');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            input.value = '';
-            try {
-                await db.collection('ticket_messages').add({
-                    ticketId: adminActiveTicketId,
-                    text: text,
-                    author: currentUserData.username,
-                    isAdmin: true,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        // ==========================================
+        // PAINEL ADMIN (TICKETS E LOGS)
+        // ==========================================
+        function adminLoadTickets() {
+            db.collection('tickets').where('status', 'in', ['aberto', 'em_atendimento']).get().then(snap => {
+                const list = document.getElementById('admin-tickets-list');
+                list.innerHTML = snap.empty ? '<p style="text-align:center; color:#888;">Fila vazia. Beba uma água!</p>' : '';
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    list.innerHTML += `
+                        <div class="ticket-item">
+                            <div class="ticket-info">
+                                <h4>${t.userName}</h4>
+                                <span style="font-size:12px; color:#aaa;">${t.type}</span>
+                                <span class="status-badge ${t.status === 'aberto' ? 'status-aberto' : 'status-atendimento'}">${t.status === 'aberto' ? 'Aguardando' : 'Sendo Atendido'}</span>
+                            </div>
+                            <button class="btn-small" onclick="adminTakeTicket('${doc.id}', '${t.userName}')" style="background:#00bcd4; color:black; width:100%;">Abrir</button>
+                        </div>`;
                 });
-            } catch(e) {
-                alert("Erro ao enviar resposta: " + e.message);
-            }
+            });
+        }
+
+        async function adminTakeTicket(ticketId, userName) {
+            adminActiveTicketId = ticketId;
+            document.getElementById('admin-tickets-list-container').classList.add('hidden');
+            document.getElementById('admin-active-ticket-panel').classList.remove('hidden');
+            document.getElementById('admin-ticket-title').innerText = `Chat: ${userName}`;
+            await db.collection('tickets').doc(ticketId).update({ status: 'em_atendimento', adminName: currentUserData.username });
+            adminListenToActiveTicket(ticketId);
         }
 
         function adminCloseTicketView() {
             adminActiveTicketId = null;
             if(adminTicketMessagesUnsubscribe) adminTicketMessagesUnsubscribe();
             document.getElementById('admin-active-ticket-panel').classList.add('hidden');
-            document.getElementById('admin-tickets-list').classList.remove('hidden');
+            document.getElementById('admin-tickets-list-container').classList.remove('hidden');
             adminLoadTickets();
         }
 
         async function adminForceCloseTicket() {
-            if(!adminActiveTicketId) return;
-            if(!confirm("Deseja baixar o histórico do chat (.txt) e APAGAR esse ticket permanentemente do banco de dados?")) return;
-
-            try {
-                const msgsSnap = await db.collection('ticket_messages')
-                    .where('ticketId', '==', adminActiveTicketId).get();
-
-                // Ordena os arquivos para o .txt no JS
-                let msgsArray = [];
-                msgsSnap.forEach(doc => msgsArray.push({ id: doc.id, ref: doc.ref, data: doc.data() }));
-                msgsArray.sort((a, b) => {
-                    let ta = a.data.timestamp ? a.data.timestamp.toMillis() : Date.now();
-                    let tb = b.data.timestamp ? b.data.timestamp.toMillis() : Date.now();
-                    return ta - tb;
-                });
-
-                let historyText = "--- HISTÓRICO DE ATENDIMENTO FLAT CAPS ---\n";
-                historyText += `Ticket ID: ${adminActiveTicketId}\nData Encerramento: ${new Date().toLocaleString()}\n\n`;
-
-                const batch = db.batch();
-
-                msgsArray.forEach(item => {
-                    const m = item.data;
-                    const date = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleString() : "Data desconhecida";
-                    historyText += `[${date}] ${m.author}: ${m.text}\n`;
-                    batch.delete(item.ref);
-                });
-
-                const blob = new Blob([historyText], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `Ticket_FlatCaps_${adminActiveTicketId}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-
-                const ticketRef = db.collection('tickets').doc(adminActiveTicketId);
-                batch.delete(ticketRef);
-                await batch.commit();
-
-                alert("Ticket convertido em .txt e apagado do Banco de Dados com sucesso!");
-                adminCloseTicketView();
-                
-            } catch (error) {
-                alert("Ocorreu um erro ao deletar o ticket: " + error.message);
-            }
+            if(!adminActiveTicketId || !confirm("Finalizar o atendimento? O log ficará salvo para sempre.")) return;
+            await db.collection('tickets').doc(adminActiveTicketId).update({ status: 'fechado', closedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            adminCloseTicketView();
         }
 
-        function loadAdminUsersList() {
-            db.collection('users').get().then(snap => {
-                const sel = document.getElementById('admin-user-select');
-                if(!sel) return;
-                sel.innerHTML = '<option value="">Selecione um jogador...</option>';
-                snap.forEach(doc => { sel.innerHTML += `<option value="${doc.id}">${doc.data().username}</option>`; });
+                function adminLoadLogs() {
+            db.collection('tickets').orderBy('timestamp', 'desc').limit(20).get().then(snap => {
+                const list = document.getElementById('admin-logs-list');
+                list.innerHTML = snap.empty ? '<p style="text-align:center; color:#888;">Sem logs.</p>' : '';
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    const dateStr = t.timestamp ? new Date(t.timestamp.toDate()).toLocaleDateString() : '';
+                    list.innerHTML += `
+                        <div class="ticket-item">
+                            <div class="ticket-info">
+                                <h4>${t.userName} <span style="font-size:12px; color:#666;">(${dateStr})</span></h4>
+                                <span class="status-badge status-fechado">Fechado</span>
+                            </div>
+                            <button class="btn-small" onclick="adminDownloadLogDirect('${doc.id}', '${t.userName}')" style="background:#4caf50; color:white; width:100%;">📸 Baixar Imagem</button>
+                        </div>`;
+                });
             });
         }
 
-        async function modifyBalance(targetUid, amount) {
+        async function adminDownloadLogDirect(ticketId, userName) {
+            alert("Gerando imagem do Log... Aguarde um instante.");
+            document.getElementById('secret-log-title').innerText = `Log Oficial - Usuário: ${userName}`;
+            
             try {
-                const targetRef = db.collection('users').doc(targetUid);
-                const doc = await targetRef.get();
-                if(doc.exists) {
-                    const currentBalance = parseFloat(doc.data().balance || 0);
-                    let newBalance = currentBalance + amount;
-                    if(newBalance < 0) newBalance = 0;
-                    await targetRef.update({ balance: newBalance });
-                    alert(`Saldo atualizado com sucesso!`);
-                }
-            } catch(e) {
-                alert("Erro ao alterar saldo: " + e.message);
+                // 1. Busca as mensagens e joga no container invisível
+                const snap = await db.collection('ticket_messages').where('ticketId', '==', ticketId).get();
+                renderMessages(snap, 'secret-log-messages');
+                
+                const printArea = document.getElementById('secret-log-render');
+                
+                // 2. Tira o print do container invisível
+                const canvas = await html2canvas(printArea, { 
+                    backgroundColor: "#0f0f0f", 
+                    scale: 2, 
+                    useCORS: true 
+                });
+                
+                // 3. Força o download
+                const link = document.createElement('a');
+                link.download = `Log_${userName.replace(/ /g, "_")}_FlatCaps.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // 4. Limpa o container invisível
+                document.getElementById('secret-log-messages').innerHTML = '';
+            } catch(error) {
+                alert("Ops, deu um erro ao gerar a imagem: " + error);
             }
         }
 
-        async function adminTransferMoney(isAdd) {
-            const uid = document.getElementById('admin-user-select').value;
-            const amt = parseFloat(document.getElementById('admin-money-amount').value);
-            if(!uid || isNaN(amt) || amt <= 0) return alert("Selecione um jogador e um valor válido!");
-            const factor = isAdd ? 1 : -1;
-            await modifyBalance(uid, amt * factor);
-            document.getElementById('admin-money-amount').value = '';
+        // ==========================================
+        // BAIXAR LOG COMO IMAGEM (NOVIDADE HTML2CANVAS)
+        // ==========================================
+        async function downloadLogAsImage() {
+            const printArea = document.getElementById('log-print-area');
+            const scrollBox = document.getElementById('admin-log-messages');
+            
+            // 1. Guarda o estado original do chat
+            const originalHeight = scrollBox.style.height;
+            const originalMaxHeight = scrollBox.style.maxHeight;
+            const originalOverflow = scrollBox.style.overflowY;
+            
+            // 2. Expande o chat inteiro para que a foto pegue TUDO, sem cortar barra de rolagem
+            scrollBox.style.height = scrollBox.scrollHeight + 'px';
+            scrollBox.style.maxHeight = 'none';
+            scrollBox.style.overflowY = 'visible';
+
+            // Alerta visual de que está carregando (opcional, pode ser rápido no celular)
+            alert("Gerando imagem do Log, aguarde um instante...");
+
+            try {
+                // Tira o print do container
+                const canvas = await html2canvas(printArea, { 
+                    backgroundColor: "#0f0f0f", 
+                    scale: 2, // Escala 2 garante alta resolução em mobiles (telas retina)
+                    useCORS: true // Necessário se houver imagens externas
+                });
+                
+                // Converte em arquivo e faz download
+                const link = document.createElement('a');
+                link.download = `Log_Atendimento_FlatCaps.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch(error) {
+                alert("Ops, deu um erro ao gerar a imagem: " + error);
+            } finally {
+                // 3. Devolve a rolagem original pro celular não bugar o visual
+                scrollBox.style.height = originalHeight;
+                scrollBox.style.maxHeight = originalMaxHeight;
+                scrollBox.style.overflowY = originalOverflow;
+            }
         }
     </script>
-
 </body>
 </html>
